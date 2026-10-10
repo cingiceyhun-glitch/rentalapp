@@ -9,6 +9,7 @@ const MAX_HTML_BYTES = 5_000_000;
 /** Handles /api/* requests. Resolves false when the request isn't ours. */
 export async function handleApi(req: IncomingMessage, res: ServerResponse): Promise<boolean> {
   const url = new URL(req.url ?? '/', 'http://localhost');
+  if (url.pathname === '/api/health') return sendJson(res, 200, { ok: true });
   if (url.pathname !== '/api/extract') return false;
 
   const target = url.searchParams.get('url');

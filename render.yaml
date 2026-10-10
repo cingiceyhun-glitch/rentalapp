@@ -1,0 +1,14 @@
+# Render blueprint: Dashboard → New → Blueprint → pick this repository.
+services:
+  - type: web
+    name: homehunt
+    runtime: node
+    plan: free
+    branch: claude/home-rental-search-app-fc3u1e
+    buildCommand: npm ci --include=dev && npm run build
+    startCommand: npm start
+    healthCheckPath: /api/health
+    autoDeploy: true
+    envVars:
+      - key: NODE_VERSION
+        value: 22.22.0

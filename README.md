@@ -35,9 +35,25 @@ npm test           # parser + CSV tests
 npm run build && npm start   # production server on $PORT (default 3000)
 ```
 
-Requires Node 22.18+ (the server runs TypeScript directly). To use it on your phone you need to
-host it on HTTPS. Any Node host works (Render, Fly.io, Railway, a small VPS), because it is a
-single `npm start`.
+Requires Node 22.18+ (the server runs TypeScript directly).
+
+## Putting it online (Render, free)
+
+`render.yaml` describes the whole setup.
+
+1. Sign in at <https://dashboard.render.com> with your GitHub account.
+2. **New → Blueprint**, then give Render access to the `rentalapp` repository and select it.
+3. Click **Apply**. The first build takes a few minutes, then you get an address like
+   `https://homehunt-xxxx.onrender.com`. Every push to the branch redeploys automatically.
+
+On the free plan the server sleeps after about 15 minutes idle. The app itself still opens
+instantly (it's cached on your phone), but the first "Get details" after a break can take
+around 50 seconds.
+
+### Install on Android
+
+Open the address in **Chrome**, then go to **⋮ → Add to Home screen → Install**. Once installed,
+**HomeHunt** appears in the Share menu of the idealista app, Imovirtual, Chrome and other apps.
 
 ## Project layout
 
