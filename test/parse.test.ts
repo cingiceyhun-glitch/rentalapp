@@ -95,3 +95,18 @@ describe('findUrl', () => {
     expect(findUrl('no link')).toBeUndefined();
   });
 });
+
+describe('parseSharedText', () => {
+  it('pulls what it can from share-sheet text', async () => {
+    const { parseSharedText } = await import('../src/shared/parse.ts');
+    const url = 'https://www.idealista.pt/imovel/34127812/';
+    expect(parseSharedText(`Apartamento T2 para arrendar em Rua de Birre, Cascais por 1.650 €/mês ${url}`, url)).toMatchObject({
+      title: 'Apartamento T2 para arrendar em Rua de Birre, Cascais por 1.650 €/mês',
+      price: 1650,
+      dealType: 'rent',
+      bedrooms: 2,
+      address: 'Rua de Birre, Cascais',
+    });
+    expect(parseSharedText(url, url)).toEqual({ url, source: 'idealista.pt', photoUrls: [] });
+  });
+});

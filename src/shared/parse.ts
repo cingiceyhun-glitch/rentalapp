@@ -378,3 +378,26 @@ export function findUrl(text: string | null | undefined): string | undefined {
   const m = text?.match(/https?:\/\/[^\s<>"']+/i);
   return m ? m[0].replace(/[).,;!?]+$/, '') : undefined;
 }
+
+/**
+ * Best effort from the text a share sheet sends along with the link, e.g.
+ * "Apartamento T2 em Rua X, Cascais por 1.200 €/mês https://…". Used when the
+ * site won't let the server read the ad.
+ */
+export function parseSharedText(text: string, url: string): ExtractedListing {
+  const withoutUrls = text.replace(/https?:\/\/\S+/gi, ' ').replace(/\s+/g, ' ').trim();
+  const result: ExtractedListing = { url, source: sourceOf(url), photoUrls: [] };
+  if (!withoutUrls) return result;
+  const all = `${url} ${withoutUrls}`;
+  result.title = withoutUrls.replace(/^(olha|vê|ve|look at|check out)[^:]*:\s*/i, '').slice(0, 160);
+  result.price = findPriceInText(withoutUrls);
+  if (result.price) result.currency = 'EUR';
+  result.dealType = detectDealType(all);
+  result.bedrooms = findBedrooms(withoutUrls);
+  result.areaM2 = findArea(withoutUrls);
+  result.address = findAddressInTitle(result.title.replace(/\s+(por|for|a)\s+[\d.,\s]+\s?(€|eur).*$/i, ''));
+  for (const key of Object.keys(result) as (keyof ExtractedListing)[]) {
+    if (result[key] === undefined || result[key] === '') delete result[key];
+  }
+  return result;
+}

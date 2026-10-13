@@ -1,7 +1,7 @@
 import type { IncomingMessage, ServerResponse } from 'node:http';
 import { lookup } from 'node:dns/promises';
 import { isIP } from 'node:net';
-import { parseListingHtml } from '../src/shared/parse.ts';
+import { parseListingHtml, type ExtractedListing } from '../src/shared/parse.ts';
 
 const FETCH_TIMEOUT_MS = 12_000;
 const MAX_HTML_BYTES = 5_000_000;
@@ -44,29 +44,58 @@ export async function fetchAndExtract(target: string) {
   if (!/^https?:$/.test(parsed.protocol)) throw new ExtractError('bad_url', 'Only http(s) links are supported.', 400);
   await assertPublicHost(parsed.hostname);
 
-  const response = await fetch(parsed, {
-    redirect: 'follow',
-    signal: AbortSignal.timeout(FETCH_TIMEOUT_MS),
-    headers: {
-      'user-agent':
-        'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/130.0 Safari/537.36',
-      accept: 'text/html,application/xhtml+xml',
-      'accept-language': 'pt-PT,pt;q=0.9,en;q=0.8',
-    },
-  });
-
-  // Big portals (idealista in particular) put bot protection in front of
-  // their pages. Report that clearly so the app can suggest the bookmarklet.
-  if (response.status === 403 || response.status === 429 || response.status === 401) {
-    throw new ExtractError('blocked', `${parsed.hostname} refused the request (HTTP ${response.status}).`);
+  // Portals with bot protection (idealista in particular) refuse requests from
+  // cloud servers, but usually still answer the crawlers that build link
+  // previews for WhatsApp and Facebook. Try as a browser first, then as those.
+  const failures: string[] = [];
+  let best: ExtractedListing | null = null;
+  for (const [name, userAgent] of USER_AGENTS) {
+    const outcome = await fetchPage(parsed, userAgent);
+    if (typeof outcome === 'string') {
+      failures.push(`${name}: ${outcome}`);
+      continue;
+    }
+    const listing = parseListingHtml(outcome.html, outcome.url);
+    if (listing.price || listing.photoUrls.length) return listing;
+    failures.push(`${name}: page had no listing details`);
+    if (!best || score(listing) > score(best)) best = listing;
   }
-  if (!response.ok) throw new ExtractError('fetch_failed', `${parsed.hostname} answered HTTP ${response.status}.`);
+  if (best && score(best) > 0) return best;
+  console.warn(`extract ${parsed.hostname} failed:`, failures.join('; '));
+  throw new ExtractError('blocked', `${parsed.hostname} didn't share the ad's details (${failures.join('; ')}).`);
+}
 
-  const html = (await response.text()).slice(0, MAX_HTML_BYTES);
-  if (/captcha-delivery\.com|geo\.captcha|cf-chl-|Just a moment\.\.\./i.test(html) && html.length < 50_000) {
-    throw new ExtractError('blocked', `${parsed.hostname} showed a bot check instead of the ad.`);
+const USER_AGENTS: [string, string][] = [
+  ['browser', 'Mozilla/5.0 (Linux; Android 14; Pixel 8) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/130.0 Mobile Safari/537.36'],
+  ['whatsapp', 'WhatsApp/2.24.21.83 A'],
+  ['facebook', 'facebookexternalhit/1.1 (+http://www.facebook.com/externalhit_uatext.php)'],
+];
+
+/** Returns the page, or a short reason why it couldn't be read. */
+async function fetchPage(url: URL, userAgent: string): Promise<{ html: string; url: string } | string> {
+  try {
+    const response = await fetch(url, {
+      redirect: 'follow',
+      signal: AbortSignal.timeout(FETCH_TIMEOUT_MS),
+      headers: {
+        'user-agent': userAgent,
+        accept: 'text/html,application/xhtml+xml',
+        'accept-language': 'pt-PT,pt;q=0.9,en;q=0.8',
+      },
+    });
+    if (!response.ok) return `HTTP ${response.status}`;
+    const html = (await response.text()).slice(0, MAX_HTML_BYTES);
+    if (/captcha-delivery\.com|geo\.captcha|cf-chl-|Just a moment\.\.\./i.test(html) && html.length < 50_000) {
+      return 'bot check';
+    }
+    return { html, url: response.url || url.href };
+  } catch (err) {
+    return (err as Error).name === 'TimeoutError' ? 'timed out' : 'no answer';
   }
-  return parseListingHtml(html, response.url || parsed.href);
+}
+
+function score(l: ExtractedListing): number {
+  return (l.title ? 1 : 0) + (l.address ? 1 : 0) + (l.bedrooms != null ? 1 : 0) + (l.description ? 1 : 0);
 }
 
 /** Refuses links that point at private/internal addresses (SSRF guard). */

@@ -7,7 +7,9 @@ import './styles.css';
 if (location.pathname === '/share') {
   const p = new URLSearchParams(location.search);
   const url = p.get('url') || findUrl(p.get('text')) || findUrl(p.get('title')) || '';
-  history.replaceState(null, '', `/#/add?via=share&url=${encodeURIComponent(url)}`);
+  // Keep the accompanying text: it often has the title and price when the site blocks us.
+  const text = [p.get('title'), p.get('text')].filter(Boolean).join(' ');
+  history.replaceState(null, '', `/#/add?via=share&url=${encodeURIComponent(url)}&text=${encodeURIComponent(text)}`);
 }
 
 if ('serviceWorker' in navigator && import.meta.env.PROD) {

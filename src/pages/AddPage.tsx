@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { findByUrl, saveListing } from '../db.ts';
 import { emptyListing, type Listing } from '../types.ts';
-import { findUrl, parseListingHtml, sourceOf, type ExtractedListing } from '../shared/parse.ts';
+import { findUrl, parseListingHtml, parseSharedText, sourceOf, type ExtractedListing } from '../shared/parse.ts';
 import { extractFromUrl } from '../lib/extract.ts';
 import { PAGE_MESSAGE, READY_MESSAGE } from '../lib/bookmarklet.ts';
 import { ListingForm } from '../components/ListingForm.tsx';
@@ -28,7 +28,7 @@ export function AddPage({ params }: { params: URLSearchParams }) {
     setState({ step: 'form', listing, notice, duplicate: await findByUrl(url) });
   };
 
-  const readLink = async (raw: string) => {
+  const readLink = async (raw: string, sharedText = '') => {
     const url = findUrl(raw) ?? (raw.trim() ? `https://${raw.trim().replace(/^\/+/, '')}` : '');
     if (!url) return;
     setState({ step: 'loading', url });
@@ -36,11 +36,13 @@ export function AddPage({ params }: { params: URLSearchParams }) {
     if (result.ok) {
       await fill(url, result.data);
     } else {
+      const fromText = sharedText ? parseSharedText(sharedText, url) : null;
+      const gotSome = !!fromText && Object.keys(fromText).length > 3;
       const hint =
         result.code === 'blocked'
-          ? `${sourceOf(url)} blocks automatic reading. Fill in what you need below — or use the HomeHunt bookmark button (More → Add homes faster), which reads the page from your own browser.`
+          ? `${sourceOf(url)} doesn't let HomeHunt read its ads${gotSome ? ', so only the details from the shared text were filled in' : ''}. Please add the rest below. (${result.message})`
           : `${result.message} You can still fill it in yourself.`;
-      await fill(url, null, hint);
+      await fill(url, gotSome ? fromText : null, hint);
     }
   };
 
@@ -73,7 +75,7 @@ export function AddPage({ params }: { params: URLSearchParams }) {
       }, 4000);
     } else if (url) {
       setLink(url);
-      void readLink(url);
+      void readLink(url, params.get('text') ?? '');
     }
   }, []);
 
