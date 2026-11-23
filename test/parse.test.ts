@@ -110,3 +110,23 @@ describe('parseSharedText', () => {
     expect(parseSharedText(url, url)).toEqual({ url, source: 'idealista.pt', photoUrls: [] });
   });
 });
+
+describe('bookmarklet snapshot', () => {
+  it('uses the visible page text when meta tags lack the details', () => {
+    const snapshot =
+      '<title>Apartamento T2 para arrendar em Rua de Birre, Cascais — idealista</title>' +
+      '<meta property="og:title" content="Apartamento T2 para arrendar em Rua de Birre, Cascais">' +
+      '<img src="https://img4.idealista.pt/blur/WEB_DETAIL/0/id.pro.pt.image.master/11/22/b.jpg">' +
+      '<main data-page-text>Comprar Arrendar Apartamento T2 para arrendar 1.650 €/mês 85 m² área bruta</main>';
+    const r = parseListingHtml(snapshot, 'https://www.idealista.pt/imovel/34127812/');
+    expect(r).toMatchObject({ price: 1650, dealType: 'rent', bedrooms: 2, areaM2: 85 });
+    expect(r.photoUrls).toEqual(['https://img4.idealista.pt/blur/WEB_DETAIL-XL-L/0/id.pro.pt.image.master/11/22/b.jpg']);
+  });
+
+  it('does not take the deal type from site menus when the ad says it', () => {
+    const snapshot =
+      '<meta property="og:title" content="Moradia T4 à venda em Birre">' +
+      '<main data-page-text>Arrendar Comprar Moradia T4 à venda 950.000 €</main>';
+    expect(parseListingHtml(snapshot, 'https://www.idealista.pt/imovel/1/')).toMatchObject({ dealType: 'buy', price: 950000 });
+  });
+});

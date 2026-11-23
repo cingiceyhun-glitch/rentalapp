@@ -22,10 +22,45 @@ export function MorePage() {
 
       <section className="panel" id="add-faster">
         <h2>Add homes faster</h2>
+        <h3>📱 Android: the HomeHunt bookmark (works with idealista)</h3>
+        <p>
+          Some sites, idealista included, refuse to let HomeHunt read their ads from the Share menu. This bookmark reads the ad
+          straight from your own Chrome instead. You set it up once:
+        </p>
+        <ol>
+          <li>
+            Tap{' '}
+            <button
+              type="button"
+              className="btn small"
+              onClick={async () => {
+                try {
+                  await navigator.clipboard.writeText(bookmarkletCode(origin));
+                  setMessage('Bookmark code copied. Now follow step 2.');
+                } catch {
+                  setMessage('Could not copy automatically. Long-press the button on a computer instead.');
+                }
+              }}
+            >
+              📋 Copy bookmark code
+            </button>
+          </li>
+          <li>
+            In Chrome, tap <b>⋮ → ☆</b> to bookmark this page, then tap <b>Edit</b>. Change the name to <b>hh</b>, and replace
+            the URL with the code you copied (long-press → <b>Paste</b>). Save.
+          </li>
+          <li>
+            On any ad in Chrome, tap the address bar, type <b>hh</b>, and tap the <b>hh</b> bookmark in the suggestions (the one
+            with the ☆). HomeHunt opens with the details filled in.
+          </li>
+        </ol>
+        <p className="muted small">
+          In the idealista app, tap <b>Share → Chrome</b> (or ⋮ → <i>Open in browser</i>) to get the ad into Chrome first.
+        </p>
         <h3>📱 Android: Share → HomeHunt</h3>
         <p>
-          Open HomeHunt in Chrome and choose <b>Install app</b> (or <b>Add to Home screen</b>). From then on, in the idealista,
-          Imovirtual or any other app or browser, tap <b>Share</b> on an ad and pick <b>HomeHunt</b>.
+          Install HomeHunt from Chrome (<b>⋮ → Add to Home screen</b>). Then tap <b>Share → HomeHunt</b> on an ad in any app.
+          This saves the link instantly, and fills in the details on sites that allow it.
         </p>
         <h3>🍏 iPhone: a Shortcut in the Share sheet</h3>
         <ol>

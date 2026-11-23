@@ -3,7 +3,6 @@ import { findByUrl, saveListing } from '../db.ts';
 import { emptyListing, type Listing } from '../types.ts';
 import { findUrl, parseListingHtml, parseSharedText, sourceOf, type ExtractedListing } from '../shared/parse.ts';
 import { extractFromUrl } from '../lib/extract.ts';
-import { PAGE_MESSAGE, READY_MESSAGE } from '../lib/bookmarklet.ts';
 import { ListingForm } from '../components/ListingForm.tsx';
 import { RemotePhoto } from '../components/Photo.tsx';
 import { back, navigate } from '../router.ts';
@@ -40,7 +39,7 @@ export function AddPage({ params }: { params: URLSearchParams }) {
       const gotSome = !!fromText && Object.keys(fromText).length > 3;
       const hint =
         result.code === 'blocked'
-          ? `${sourceOf(url)} doesn't let HomeHunt read its ads${gotSome ? ', so only the details from the shared text were filled in' : ''}. Please add the rest below. (${result.message})`
+          ? `${sourceOf(url)} doesn't let HomeHunt read its ads from the share menu${gotSome ? ', so only the details from the shared text were filled in' : ''}. Open the ad in Chrome and use the HomeHunt bookmark instead (More → Add homes faster), or fill it in below.`
           : `${result.message} You can still fill it in yourself.`;
       await fill(url, gotSome ? fromText : null, hint);
     }
@@ -53,26 +52,11 @@ export function AddPage({ params }: { params: URLSearchParams }) {
     const url = params.get('url') ?? '';
     const via = params.get('via');
 
-    if (via === 'bookmarklet' && window.opener) {
-      setState({ step: 'loading', url });
-      let done = false;
-      const onMessage = (e: MessageEvent) => {
-        if (e.source !== window.opener || e.data?.type !== PAGE_MESSAGE || done) return;
-        done = true;
-        window.removeEventListener('message', onMessage);
-        const pageUrl = String(e.data.url);
-        void fill(pageUrl, parseListingHtml(String(e.data.html), pageUrl));
-      };
-      window.addEventListener('message', onMessage);
-      window.opener.postMessage(READY_MESSAGE, '*');
-      // Some sites cut the link back to their tab; fall back to reading the URL.
-      setTimeout(() => {
-        if (done) return;
-        done = true;
-        window.removeEventListener('message', onMessage);
-        if (url) void readLink(url);
-        else setState({ step: 'link' });
-      }, 4000);
+    const page = params.get('page');
+    if (via === 'bookmarklet' && page && url) {
+      // Drop the (large) page snapshot from the address bar and history.
+      history.replaceState(null, '', '#/add');
+      void fill(url, parseListingHtml(page, url));
     } else if (url) {
       setLink(url);
       void readLink(url, params.get('text') ?? '');

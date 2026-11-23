@@ -71,6 +71,7 @@ export function parseListingHtml(html: string, pageUrl: string): ExtractedListin
   const meta = readMetaTags(html);
   const ld = readJsonLd(html);
   const result: ExtractedListing = { url: pageUrl, source, photoUrls: [] };
+  const pageText = readPageText(html);
 
   result.title = clean(ld.name ?? meta['og:title'] ?? meta['twitter:title'] ?? readTitleTag(html));
   result.description = clean(ld.description ?? meta['og:description'] ?? meta['description']);
@@ -84,18 +85,21 @@ export function parseListingHtml(html: string, pageUrl: string): ExtractedListin
     result.price = parsePrice(meta['product:price:amount'] ?? meta['og:price:amount']);
     result.currency = meta['product:price:currency'] ?? meta['og:price:currency'] ?? 'EUR';
   } else {
-    const fromText = findPriceInText(`${result.title ?? ''} ${result.description ?? ''}`);
+    // The visible page text (sent by the bookmarklet) comes last: the first
+    // amount on an ad page is nearly always its price.
+    const fromText = findPriceInText(`${result.title ?? ''} ${result.description ?? ''}`) ?? findPriceInText(pageText);
     if (fromText) {
       result.price = fromText;
       result.currency = 'EUR';
     }
   }
 
+  // Page text is a fallback only: site menus mention both "comprar" and "arrendar".
   const text = `${pageUrl} ${result.title ?? ''} ${result.description ?? ''}`;
-  result.dealType = detectDealType(text);
-  result.bedrooms = toNumber(ld.bedrooms) ?? findBedrooms(text);
+  result.dealType = detectDealType(text) ?? detectDealType(pageText);
+  result.bedrooms = toNumber(ld.bedrooms) ?? findBedrooms(text) ?? findBedrooms(pageText);
   result.bathrooms = toNumber(ld.bathrooms);
-  result.areaM2 = toNumber(ld.area) ?? findArea(text);
+  result.areaM2 = toNumber(ld.area) ?? findArea(text) ?? findArea(pageText);
   result.address = clean(ld.address ?? findAddressInTitle(result.title));
   result.agentName = clean(ld.agentName);
   result.agency = clean(ld.agency);
@@ -137,6 +141,12 @@ function readAttributes(tag: string): Record<string, string> {
     attrs[m[1].toLowerCase()] = m[3] ?? m[4] ?? m[5] ?? '';
   }
   return attrs;
+}
+
+/** Visible text of the page, when the bookmarklet sent a snapshot. */
+function readPageText(html: string): string {
+  const m = html.match(/<main data-page-text>([\s\S]*?)<\/main>/i);
+  return m ? decodeEntities(m[1]).replace(/\s+/g, ' ').slice(0, 6000) : '';
 }
 
 function readTitleTag(html: string): string | undefined {
