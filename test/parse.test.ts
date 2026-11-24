@@ -141,3 +141,25 @@ describe('site name in titles', () => {
     expect(t('Casa - Cascais', 'https://www.idealista.pt/imovel/1/')).toBe('Casa - Cascais');
   });
 });
+
+describe('duplicate photos', () => {
+  it('treats the same idealista photo from another server, size or format as one', async () => {
+    const { uniquePhotos } = await import('../src/shared/parse.ts');
+    const base = 'id.pro.pt.image.master/2a/f1/0e/1234567.jpg';
+    const urls = [
+      `https://img3.idealista.pt/blur/WEB_DETAIL-XL-L/0/${base}`,
+      `https://img4.idealista.pt/blur/WEB_DETAIL-XL-L/0/${base}`,
+      `https://img3.idealista.pt/blur/WEB_LISTING/0/${base.replace('.jpg', '.webp')}`,
+      `https://img3.idealista.pt/blur/WEB_DETAIL-XL-L/0/id.pro.pt.image.master/2a/f1/0e/7654321.jpg`,
+    ];
+    expect(uniquePhotos(urls)).toEqual([urls[0], urls[3]]);
+  });
+
+  it('collects each photo once from a page that lists copies', () => {
+    const html =
+      '<meta property="og:image" content="https://img3.idealista.pt/blur/WEB_LISTING/0/id.pro.pt.image.master/aa/1.jpg">' +
+      '<img src="https://img4.idealista.pt/blur/WEB_DETAIL/0/id.pro.pt.image.master/aa/1.webp">' +
+      '<img src="https://img3.idealista.pt/blur/WEB_DETAIL/0/id.pro.pt.image.master/aa/2.jpg">';
+    expect(parseListingHtml(html, 'https://www.idealista.pt/imovel/1/').photoUrls).toHaveLength(2);
+  });
+});

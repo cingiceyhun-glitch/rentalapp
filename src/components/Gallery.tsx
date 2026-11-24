@@ -2,12 +2,13 @@ import { useEffect, useRef, useState } from 'react';
 import type { OwnPhoto } from '../types.ts';
 import { BlobPhoto, RemotePhoto } from './Photo.tsx';
 import { Icon } from './Icon.tsx';
+import { uniquePhotos } from '../shared/parse.ts';
 
 type Item = { kind: 'remote'; src: string } | { kind: 'own'; photo: OwnPhoto };
 
 /** Full-width swipeable photos (your own first, then the ad's), with a full-screen viewer. */
 export function Gallery({ urls, own, onDeleteOwn }: { urls: string[]; own: OwnPhoto[]; onDeleteOwn: (id: string) => void }) {
-  const items: Item[] = [...own.map((photo) => ({ kind: 'own' as const, photo })), ...urls.map((src) => ({ kind: 'remote' as const, src }))];
+  const items: Item[] = [...own.map((photo) => ({ kind: 'own' as const, photo })), ...uniquePhotos(urls).map((src) => ({ kind: 'remote' as const, src }))];
   const [open, setOpen] = useState<number | null>(null);
   const [current, setCurrent] = useState(0);
   const strip = useRef<HTMLDivElement>(null);

@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { findByUrl, saveListing } from '../db.ts';
 import { emptyListing, type Listing } from '../types.ts';
-import { findUrl, parseListingHtml, parseSharedText, sourceOf, type ExtractedListing } from '../shared/parse.ts';
+import { findUrl, parseListingHtml, parseSharedText, sourceOf, uniquePhotos, type ExtractedListing } from '../shared/parse.ts';
 import { extractFromUrl } from '../lib/extract.ts';
 import { ListingForm } from '../components/ListingForm.tsx';
 import { RemotePhoto } from '../components/Photo.tsx';
@@ -23,7 +23,7 @@ export function AddPage({ params }: { params: URLSearchParams }) {
     if (extracted) {
       const { photoUrls, ...rest } = extracted;
       for (const [k, v] of Object.entries(rest)) if (v !== undefined) (listing as unknown as Record<string, unknown>)[k] = v;
-      listing.photoUrls = photoUrls;
+      listing.photoUrls = uniquePhotos(photoUrls);
     }
     setState({ step: 'form', listing, notice, duplicate: await findByUrl(url) });
   };

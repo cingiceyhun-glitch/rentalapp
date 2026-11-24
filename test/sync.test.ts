@@ -155,3 +155,15 @@ describe('sync edge cases', () => {
     expect(cloud.listings.get(a.id)?.deleted).toBe(true);
   });
 });
+
+describe('duplicate photo clean-up', () => {
+  it('removes copies from saved homes and queues them for sync', async () => {
+    const { cleanDuplicatePhotos } = await import('../src/db.ts');
+    const a = { ...home('A'), photoUrls: ['https://img3.idealista.pt/blur/X/0/p/1.jpg', 'https://img4.idealista.pt/blur/X/0/p/1.webp', 'https://img3.idealista.pt/blur/X/0/p/2.jpg'] };
+    await phone.listings.put(a);
+    expect(await cleanDuplicatePhotos(phone)).toBe(1);
+    expect((await phone.listings.get(a.id))?.photoUrls).toHaveLength(2);
+    expect(await phone.outbox.get(`listing:${a.id}`)).toBeTruthy();
+    expect(await cleanDuplicatePhotos(phone)).toBe(0);
+  });
+});

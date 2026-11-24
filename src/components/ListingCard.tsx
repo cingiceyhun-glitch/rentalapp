@@ -1,6 +1,7 @@
 import type { Listing } from '../types.ts';
 import { facts, formatPrice, pricePerM2, relativeDay } from '../lib/format.ts';
 import { updateListing } from '../db.ts';
+import { uniquePhotos } from '../shared/parse.ts';
 import { RemotePhoto, BlobPhoto } from './Photo.tsx';
 import { Icon } from './Icon.tsx';
 import { Stars } from './Stars.tsx';
@@ -18,6 +19,7 @@ export function ListingCard({ listing: l, cover, rank, children }: Props) {
   const upcoming = l.viewingAt && new Date(l.viewingAt).getTime() > Date.now() - 3_600_000;
   const [amount, period] = formatPrice(l).split('/');
   const ppm = pricePerM2(l);
+  const photoCount = uniquePhotos(l.photoUrls).length;
   return (
     <article className={`card ${l.status === 'rejected' || l.status === 'unavailable' ? 'dim' : ''}`}>
       <a href={`#/l/${l.id}`} className="card-link">
@@ -32,7 +34,7 @@ export function ListingCard({ listing: l, cover, rank, children }: Props) {
             </div>
           )}
           {rank !== undefined && <span className="tag rank">#{rank}</span>}
-          {l.photoUrls.length > 1 && <span className="tag count">1/{l.photoUrls.length}</span>}
+          {photoCount > 1 && <span className="tag count">1/{photoCount}</span>}
         </div>
         <div className="card-body">
           <div className="spread">

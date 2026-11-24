@@ -1,5 +1,6 @@
 import { Dexie, type EntityTable } from 'dexie';
 import type { Listing, OwnPhoto } from './types.ts';
+import { uniquePhotos } from './shared/parse.ts';
 
 // Everything lives on the device (IndexedDB) first, so the app works offline.
 // When sync is on, every change is also queued in `outbox` and pushed to the
@@ -100,4 +101,20 @@ export async function findByUrl(url: string): Promise<Listing | undefined> {
   const bare = url.replace(/[?#].*$/, '').replace(/\/$/, '');
   const all = await db.listings.toArray();
   return all.find((l) => l.url && l.url.replace(/[?#].*$/, '').replace(/\/$/, '') === bare);
+}
+
+/** Removes repeated copies of the same ad photo from saved homes (older versions kept some). */
+export async function cleanDuplicatePhotos(d = db): Promise<number> {
+  const fixed: string[] = [];
+  await d.transaction('rw', d.listings, d.outbox, async () => {
+    for (const l of await d.listings.toArray()) {
+      const unique = uniquePhotos(l.photoUrls);
+      if (unique.length < l.photoUrls.length) {
+        await d.listings.update(l.id, { photoUrls: unique, updatedAt: Date.now() });
+        fixed.push(l.id);
+      }
+    }
+    await enqueue(d, 'listing', fixed);
+  });
+  return fixed.length;
 }

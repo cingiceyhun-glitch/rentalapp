@@ -345,13 +345,40 @@ function collectPhotos(html: string, pageUrl: string, source: string, structured
     }
     if (!/^https?:/.test(url)) continue;
     if (rule?.upscalePhoto) url = rule.upscalePhoto(url);
-    const key = url.replace(/[?#].*$/, '');
+    const key = photoKey(url);
     if (seen.has(key)) continue;
     seen.add(key);
     photos.push(url);
     if (photos.length >= MAX_PHOTOS) break;
   }
   return photos;
+}
+
+/**
+ * Identifies a photo regardless of which copy of it a URL points to: portals
+ * serve the same picture from several servers (img3/img4…), in several sizes
+ * and as both .jpg and .webp.
+ */
+export function photoKey(url: string): string {
+  return url
+    .replace(/^https?:\/\//i, '')
+    .replace(/^([a-z]+)\d+\./i, '$1.') // img3.idealista.pt → img.idealista.pt
+    .replace(/[?#].*$/, '')
+    .replace(/;s=\d+x\d+.*$/, '') // Imovirtual size suffix
+    .replace(/\/blur\/[^/]+\//, '/') // idealista size folder
+    .replace(/\.(jpe?g|webp|png|avif)$/i, '')
+    .toLowerCase();
+}
+
+/** Removes repeated copies of the same photo, keeping the first of each. */
+export function uniquePhotos(urls: string[]): string[] {
+  const seen = new Set<string>();
+  return urls.filter((u) => {
+    const key = photoKey(u);
+    if (seen.has(key)) return false;
+    seen.add(key);
+    return true;
+  });
 }
 
 // ---------------------------------------------------------------------------

@@ -2,6 +2,7 @@ import { createRoot } from 'react-dom/client';
 import { App } from './App.tsx';
 import { findUrl } from './shared/parse.ts';
 import { startSync } from './sync/index.ts';
+import { cleanDuplicatePhotos } from './db.ts';
 import '@fontsource-variable/inter';
 import './styles.css';
 
@@ -20,3 +21,4 @@ if ('serviceWorker' in navigator && import.meta.env.PROD) {
 
 createRoot(document.getElementById('root')!).render(<App />);
 void startSync();
+void cleanDuplicatePhotos().catch(() => {});
