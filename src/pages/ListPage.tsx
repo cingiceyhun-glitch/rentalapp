@@ -72,7 +72,7 @@ export function ListPage() {
     const a = visible[index];
     const b = visible[index + delta];
     if (!a || !b) return;
-    await db.transaction('rw', db.listings, async () => {
+    await db.transaction('rw', db.listings, db.outbox, async () => {
       // Ranks start as creation timestamps; nudge apart in the rare case they tie.
       const rb = a.rank === b.rank ? a.rank - delta : a.rank;
       await updateListing(a.id, { rank: b.rank });

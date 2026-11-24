@@ -1,6 +1,7 @@
 import { createRoot } from 'react-dom/client';
 import { App } from './App.tsx';
 import { findUrl } from './shared/parse.ts';
+import { startSync } from './sync/index.ts';
 import './styles.css';
 
 // Android share sheet → /share?url=…&text=… : turn it into the in-app "add" route.
@@ -17,3 +18,4 @@ if ('serviceWorker' in navigator && import.meta.env.PROD) {
 }
 
 createRoot(document.getElementById('root')!).render(<App />);
+void startSync();

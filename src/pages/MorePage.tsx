@@ -6,6 +6,7 @@ import { downloadFile } from '../lib/download.ts';
 import { bookmarkletCode } from '../lib/bookmarklet.ts';
 import { useSettings } from '../lib/settings.ts';
 import { speechSupported } from '../lib/speech.ts';
+import { SyncPanel } from '../components/SyncPanel.tsx';
 
 export function MorePage() {
   const [settings, update] = useSettings();
@@ -19,6 +20,8 @@ export function MorePage() {
       <header className="page-head">
         <h1>More</h1>
       </header>
+
+      <SyncPanel />
 
       <section className="panel" id="add-faster">
         <h2>Add homes faster</h2>
@@ -125,7 +128,7 @@ export function MorePage() {
       <section className="panel">
         <h2>Your data</h2>
         <p className="muted small">
-          Everything is stored on this device only. Make a backup now and then, or to move to another phone or computer.
+          A backup file is a copy of everything, photos included, that you keep yourself.
         </p>
         <div className="button-list">
           <button

@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { useLiveQuery } from 'dexie-react-hooks';
-import { db, deleteListing, updateListing } from '../db.ts';
+import { addPhotos as savePhotos, db, deleteListing, deletePhoto, updateListing } from '../db.ts';
 import { STATUSES, type Listing, type Status } from '../types.ts';
 import { dialable, facts, formatPrice, formatViewing, mapsLink, pricePerM2, relativeDay, whatsappLink } from '../lib/format.ts';
 import { viewingIcs } from '../lib/ics.ts';
@@ -34,7 +34,7 @@ export function DetailPage({ id }: { id: string }) {
     const rows = await Promise.all(
       [...files].map(async (f, i) => ({ id: crypto.randomUUID(), listingId: l.id, createdAt: now + i, blob: await downscale(f) })),
     );
-    await db.photos.bulkAdd(rows);
+    await savePhotos(rows);
   };
 
   return (
@@ -54,7 +54,7 @@ export function DetailPage({ id }: { id: string }) {
         </button>
       </div>
 
-      <Gallery urls={l.photoUrls} own={photos ?? []} onDeleteOwn={(pid) => db.photos.delete(pid)} />
+      <Gallery urls={l.photoUrls} own={photos ?? []} onDeleteOwn={(pid) => deletePhoto(pid)} />
 
       <header className="detail-head">
         <div className="detail-price">

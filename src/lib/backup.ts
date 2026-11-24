@@ -1,4 +1,4 @@
-import { db } from '../db.ts';
+import { db, enqueue } from '../db.ts';
 import type { Listing, OwnPhoto } from '../types.ts';
 
 interface BackupFile {
@@ -44,15 +44,19 @@ export async function importBackup(json: string): Promise<number> {
     })),
   );
   let count = 0;
-  await db.transaction('rw', db.listings, db.photos, async () => {
+  await db.transaction('rw', db.listings, db.photos, db.outbox, async () => {
+    const changed: string[] = [];
     for (const l of file.listings) {
       const existing = await db.listings.get(l.id);
       if (!existing || existing.updatedAt < l.updatedAt) {
         await db.listings.put(l);
-        count++;
+        changed.push(l.id);
       }
     }
+    count = changed.length;
     await db.photos.bulkPut(photos);
+    await enqueue(db, 'listing', changed);
+    await enqueue(db, 'photo', photos.map((p) => p.id));
   });
   return count;
 }

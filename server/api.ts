@@ -10,6 +10,13 @@ const MAX_HTML_BYTES = 5_000_000;
 export async function handleApi(req: IncomingMessage, res: ServerResponse): Promise<boolean> {
   const url = new URL(req.url ?? '/', 'http://localhost');
   if (url.pathname === '/api/health') return sendJson(res, 200, { ok: true });
+  if (url.pathname === '/api/config') {
+    // Public values: the anon key only allows what the database's row-level security permits.
+    return sendJson(res, 200, {
+      supabaseUrl: process.env.SUPABASE_URL ?? null,
+      supabaseAnonKey: process.env.SUPABASE_ANON_KEY ?? null,
+    });
+  }
   if (url.pathname !== '/api/extract') return false;
 
   const target = url.searchParams.get('url');
