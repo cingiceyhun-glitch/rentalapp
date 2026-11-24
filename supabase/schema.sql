@@ -46,6 +46,11 @@ drop trigger if exists photos_touch on public.photos;
 create trigger photos_touch before insert or update on public.photos
   for each row execute function public.homehunt_touch();
 
+-- Let signed-in users reach the tables at all (newer Supabase projects don't
+-- grant this automatically); the policies below then limit them to their own rows.
+grant usage on schema public to authenticated;
+grant select, insert, update, delete on public.listings, public.photos to authenticated;
+
 -- Everyone only ever sees their own rows.
 alter table public.listings enable row level security;
 alter table public.photos enable row level security;
