@@ -130,3 +130,14 @@ describe('bookmarklet snapshot', () => {
     expect(parseListingHtml(snapshot, 'https://www.idealista.pt/imovel/1/')).toMatchObject({ dealType: 'buy', price: 950000 });
   });
 });
+
+describe('site name in titles', () => {
+  it('drops a trailing "— idealista" and similar', () => {
+    const t = (title: string, url: string) => parseListingHtml(`<title>${title}</title>`, url).title;
+    expect(t('T1 flat for rent in Avenida Infante Dom Henrique, Cascais — idealista', 'https://www.idealista.pt/en/imovel/1/')).toBe(
+      'T1 flat for rent in Avenida Infante Dom Henrique, Cascais',
+    );
+    expect(t('Apartamento T2 | Imovirtual.com', 'https://www.imovirtual.com/pt/anuncio/x')).toBe('Apartamento T2');
+    expect(t('Casa - Cascais', 'https://www.idealista.pt/imovel/1/')).toBe('Casa - Cascais');
+  });
+});

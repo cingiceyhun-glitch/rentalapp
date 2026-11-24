@@ -73,7 +73,7 @@ export function parseListingHtml(html: string, pageUrl: string): ExtractedListin
   const result: ExtractedListing = { url: pageUrl, source, photoUrls: [] };
   const pageText = readPageText(html);
 
-  result.title = clean(ld.name ?? meta['og:title'] ?? meta['twitter:title'] ?? readTitleTag(html));
+  result.title = stripSiteName(clean(ld.name ?? meta['og:title'] ?? meta['twitter:title'] ?? readTitleTag(html)), source);
   result.description = clean(ld.description ?? meta['og:description'] ?? meta['description']);
 
   // Price: structured data first, then meta, then whatever the text says.
@@ -141,6 +141,15 @@ function readAttributes(tag: string): Record<string, string> {
     attrs[m[1].toLowerCase()] = m[3] ?? m[4] ?? m[5] ?? '';
   }
   return attrs;
+}
+
+/** "T1 flat for rent in X — idealista" → "T1 flat for rent in X". */
+function stripSiteName(title: string | undefined, source: string): string | undefined {
+  if (!title) return title;
+  const site = source.split('.')[0];
+  if (!site) return title;
+  const escaped = site.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+  return title.replace(new RegExp(`\\s+[-|—–·:]\\s+${escaped}(\\.[a-z.]+)?\\s*$`, 'i'), '').trim() || title;
 }
 
 /** Visible text of the page, when the bookmarklet sent a snapshot. */
