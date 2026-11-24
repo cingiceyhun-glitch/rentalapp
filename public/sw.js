@@ -17,6 +17,7 @@ self.addEventListener('fetch', (event) => {
   const { request } = event;
   const url = new URL(request.url);
   if (request.method !== 'GET' || url.origin !== location.origin || url.pathname.startsWith('/api/')) return;
+  if (url.pathname.endsWith('.apk')) return; // always fetch the newest app build
 
   if (request.mode === 'navigate') {
     event.respondWith(

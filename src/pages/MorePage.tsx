@@ -25,6 +25,25 @@ export function MorePage() {
 
       <section className="panel" id="add-faster">
         <h2>Add homes faster</h2>
+        <h3>📱 Android: the "Add to HomeHunt" app (easiest)</h3>
+        <p>
+          A small helper app that puts <b>Add to HomeHunt</b> in Android's Share menu. Share any ad, idealista included, and
+          HomeHunt opens with the details filled in.
+        </p>
+        <ol>
+          <li>
+            <a className="btn small" href="/homehunt.apk" download>
+              ⬇️ Download the app
+            </a>
+          </li>
+          <li>
+            Open the downloaded file. If Android asks, allow Chrome to <b>install unknown apps</b>, then tap <b>Install</b>.
+          </li>
+          <li>
+            In the idealista app (or anywhere else), tap <b>Share → Add to HomeHunt</b>.
+          </li>
+        </ol>
+        <p className="muted small">If a "check you're not a robot" box appears while it reads the ad, complete it and it carries on.</p>
         <h3>📱 Android: the HomeHunt bookmark (works with idealista)</h3>
         <p>
           Some sites, idealista included, refuse to let HomeHunt read their ads from the Share menu. This bookmark reads the ad

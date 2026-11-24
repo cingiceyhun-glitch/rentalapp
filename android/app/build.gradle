@@ -1,0 +1,54 @@
+plugins {
+    id 'com.android.application'
+}
+
+def runNumber = (System.getenv('GITHUB_RUN_NUMBER') ?: '1') as Integer
+
+android {
+    namespace 'app.homehunt.share'
+    compileSdk 35
+
+    defaultConfig {
+        applicationId 'app.homehunt.share'
+        minSdk 24
+        targetSdk 35
+        versionCode runNumber
+        versionName "1.0.${runNumber}"
+        // Where the HomeHunt web app lives.
+        buildConfigField 'String', 'APP_URL', '"https://homehunt-85f4.onrender.com"'
+    }
+
+    buildFeatures {
+        buildConfig true
+    }
+
+    // The page-reading script is shared with the web app's bookmark button.
+    sourceSets {
+        main {
+            assets.srcDirs += ['../../src/shared/snapshot']
+        }
+    }
+
+    // A fixed key so each new build installs as an update over the previous one.
+    // This app is installed by hand, not through a store; see android/README.md.
+    signingConfigs {
+        release {
+            storeFile file('../homehunt.keystore')
+            storePassword 'homehunt'
+            keyAlias 'homehunt'
+            keyPassword 'homehunt'
+        }
+    }
+
+    buildTypes {
+        release {
+            signingConfig signingConfigs.release
+            minifyEnabled false
+        }
+    }
+
+    compileOptions {
+        sourceCompatibility JavaVersion.VERSION_17
+        targetCompatibility JavaVersion.VERSION_17
+    }
+}
