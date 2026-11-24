@@ -1,8 +1,11 @@
 import { useMemo, useState } from 'react';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { db, updateListing } from '../db.ts';
-import { STATUSES, type Listing, type OwnPhoto, type Status } from '../types.ts';
+import type { Listing, OwnPhoto, Status } from '../types.ts';
 import { ListingCard } from '../components/ListingCard.tsx';
+import { Icon } from '../components/Icon.tsx';
+import { relativeDay } from '../lib/format.ts';
+import { useSyncStatus } from '../sync/index.ts';
 
 type Sort = 'ranking' | 'newest' | 'rating' | 'priceAsc' | 'priceDesc' | 'viewing';
 type Filter = 'active' | 'all' | 'favorites' | Status;
@@ -85,67 +88,117 @@ export function ListPage() {
   if (listings.length === 0) {
     return (
       <div className="welcome">
+        <div className="icon-tile">
+          <Icon name="home" size={34} />
+        </div>
         <h1>Your home search, in one place</h1>
         <p>
-          Stop juggling browser tabs, notes and spreadsheets. Paste the link of any property ad — HomeHunt pulls in the price,
-          photos and details, and you add viewings, the agent's contact, your own photos and notes.
+          Stop juggling browser tabs, notes and spreadsheets. Paste the link of any property ad and HomeHunt pulls in the price,
+          photos and details. Then add viewings, the agent's contact, your own photos and notes.
         </p>
         <a className="btn primary big" href="#/add">
-          ＋ Add your first home
+          <Icon name="plus" size={20} /> Add your first home
         </a>
-        <p className="muted small">
-          Tip: see <a href="#/more">More → Add homes faster</a> for the share-button and one-click bookmark.
+        <p className="muted small" style={{ marginTop: 20 }}>
+          Tip: <a href="#/more">More → Add homes faster</a> shows the one-tap ways to add ads.
         </p>
       </div>
     );
   }
 
+  const now = Date.now() - 3_600_000;
+  const next = listings
+    .filter((l) => l.viewingAt && new Date(l.viewingAt).getTime() > now && !CLOSED.includes(l.status))
+    .sort((a, b) => a.viewingAt!.localeCompare(b.viewingAt!))[0];
+  const activeCount = listings.filter((l) => !CLOSED.includes(l.status)).length;
+  const chips: { id: Filter; label: string }[] = [
+    { id: 'active', label: `In the running · ${activeCount}` },
+    { id: 'favorites', label: '♥ Favourites' },
+    { id: 'viewing', label: 'Viewing booked' },
+    { id: 'viewed', label: 'Viewed' },
+    { id: 'applied', label: 'Applied / offer' },
+    { id: 'all', label: `All · ${listings.length}` },
+  ];
+
   return (
     <>
       <header className="page-head">
-        <h1>Homes <span className="muted">{visible.length}</span></h1>
+        <div>
+          <div className="eyebrow">Your home search</div>
+          <h1>
+            Homes <span className="count">{visible.length}</span>
+          </h1>
+        </div>
+        <SyncDot />
+      </header>
+
+      <label className="search">
+        <Icon name="search" size={19} />
         <input
           type="search"
-          className="search"
-          placeholder="Search address, agent, notes…"
+          placeholder="Search address, agent, notes"
           value={query}
           onChange={(e) => setQuery(e.target.value)}
           aria-label="Search homes"
         />
-        <div className="toolbar">
-          <select value={filter} onChange={(e) => setPref({ filter: e.target.value as Filter })} aria-label="Filter">
-            <option value="active">Still in the running</option>
-            <option value="favorites">♥ Favourites</option>
-            <option value="all">All homes</option>
-            {STATUSES.map((s) => (
-              <option key={s.id} value={s.id}>
-                {s.label}
-              </option>
-            ))}
-          </select>
+      </label>
+
+      <div className="chips" role="tablist" aria-label="Filter">
+        {chips.map((c) => (
+          <button
+            key={c.id}
+            type="button"
+            role="tab"
+            aria-selected={filter === c.id}
+            className={`chip ${filter === c.id ? 'on' : ''}`}
+            onClick={() => setPref({ filter: c.id })}
+          >
+            {c.label}
+          </button>
+        ))}
+      </div>
+
+      {next && (
+        <a className="next-viewing" href={`#/l/${next.id}`}>
+          <Icon name="calendar" size={20} />
+          <div>
+            <b>
+              Next viewing · {relativeDay(next.viewingAt!)} {next.viewingAt!.slice(11, 16)}
+            </b>
+            <span>
+              {next.title || next.address || 'Untitled home'}
+              {next.agentName && ` · ${next.agentName}`}
+            </span>
+          </div>
+        </a>
+      )}
+
+      <div className="list-bar">
+        <b>{SORTS.find((x) => x.id === sort)?.label}</b>
+        <span className="sort-btn">
+          Sort <Icon name="down" size={15} />
           <select value={sort} onChange={(e) => setPref({ sort: e.target.value as Sort })} aria-label="Sort">
-            {SORTS.map((s) => (
-              <option key={s.id} value={s.id}>
-                {s.label}
-              </option>
-            ))}
+          {SORTS.map((x) => (
+            <option key={x.id} value={x.id}>
+              {x.label}
+            </option>
+          ))}
           </select>
-        </div>
-      </header>
+        </span>
+      </div>
 
       {visible.length === 0 && <p className="empty">Nothing matches. Try another search or filter.</p>}
 
       <div className="cards">
         {visible.map((l, i) => (
-          <ListingCard key={l.id} listing={l} cover={covers?.get(l.id)?.blob}>
+          <ListingCard key={l.id} listing={l} cover={covers?.get(l.id)?.blob} rank={sort === 'ranking' ? i + 1 : undefined}>
             {sort === 'ranking' && (
               <div className="rank-controls">
-                <span className="rank-no">#{i + 1}</span>
                 <button type="button" aria-label="Move up" disabled={i === 0} onClick={() => move(i, -1)}>
-                  ▲
+                  <Icon name="up" size={16} />
                 </button>
                 <button type="button" aria-label="Move down" disabled={i === visible.length - 1} onClick={() => move(i, 1)}>
-                  ▼
+                  <Icon name="down" size={16} />
                 </button>
               </div>
             )}
@@ -153,6 +206,25 @@ export function ListPage() {
         ))}
       </div>
     </>
+  );
+}
+
+function SyncDot() {
+  const sync = useSyncStatus();
+  if (sync.state === 'loading' || sync.state === 'unavailable') return null;
+  const state = sync.state === 'synced' ? 'ok' : sync.state === 'error' ? 'bad' : '';
+  const label = {
+    'signed-out': 'Sync is off: sign in under More',
+    syncing: 'Syncing…',
+    synced: 'Synced',
+    offline: 'Offline',
+    error: `Sync problem: ${sync.error ?? ''}`,
+  }[sync.state];
+  return (
+    <a className={`round sync-dot ${state}`} href="#/more" title={label} aria-label={label}>
+      <Icon name="cloud" size={19} />
+      <i />
+    </a>
   );
 }
 

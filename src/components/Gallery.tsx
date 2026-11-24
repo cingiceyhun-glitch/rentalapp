@@ -1,12 +1,16 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import type { OwnPhoto } from '../types.ts';
 import { BlobPhoto, RemotePhoto } from './Photo.tsx';
+import { Icon } from './Icon.tsx';
 
 type Item = { kind: 'remote'; src: string } | { kind: 'own'; photo: OwnPhoto };
 
+/** Full-width swipeable photos (your own first, then the ad's), with a full-screen viewer. */
 export function Gallery({ urls, own, onDeleteOwn }: { urls: string[]; own: OwnPhoto[]; onDeleteOwn: (id: string) => void }) {
   const items: Item[] = [...own.map((photo) => ({ kind: 'own' as const, photo })), ...urls.map((src) => ({ kind: 'remote' as const, src }))];
   const [open, setOpen] = useState<number | null>(null);
+  const [current, setCurrent] = useState(0);
+  const strip = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     if (open === null) return;
@@ -23,18 +27,24 @@ export function Gallery({ urls, own, onDeleteOwn }: { urls: string[]; own: OwnPh
 
   const render = (item: Item, className?: string) =>
     item.kind === 'remote' ? <RemotePhoto src={item.src} className={className} /> : <BlobPhoto blob={item.photo.blob} className={className} />;
-
-  const current = open !== null ? items[open] : null;
+  const shown = open !== null ? items[open] : null;
 
   return (
     <>
-      <div className="gallery" role="list">
+      <div
+        className="gallery"
+        ref={strip}
+        onScroll={(e) => {
+          const el = e.currentTarget;
+          setCurrent(Math.round(el.scrollLeft / Math.max(1, el.clientWidth)));
+        }}
+      >
         {items.map((item, i) => (
           <button
             type="button"
-            role="listitem"
             key={item.kind === 'remote' ? item.src : item.photo.id}
             className="gallery-item"
+            aria-label={`Photo ${i + 1} of ${items.length}`}
             onClick={() => setOpen(i)}
           >
             {render(item)}
@@ -42,31 +52,37 @@ export function Gallery({ urls, own, onDeleteOwn }: { urls: string[]; own: OwnPh
           </button>
         ))}
       </div>
-      {current && (
+      {items.length > 1 && (
+        <span className="tag gallery-count">
+          {Math.min(current + 1, items.length)} / {items.length}
+        </span>
+      )}
+      {shown && (
         <div className="lightbox" role="dialog" aria-modal="true" onClick={() => setOpen(null)}>
-          {render(current, 'lightbox-img')}
+          {render(shown, 'lightbox-img')}
           <div className="lightbox-bar" onClick={(e) => e.stopPropagation()}>
             <button type="button" onClick={() => setOpen((open! - 1 + items.length) % items.length)} aria-label="Previous">
-              ‹
+              <Icon name="back" size={20} />
             </button>
             <span>
               {open! + 1} / {items.length}
             </span>
-            {current.kind === 'own' && (
+            {shown.kind === 'own' && (
               <button
                 type="button"
+                aria-label="Delete photo"
                 onClick={() => {
                   if (confirm('Delete this photo?')) {
-                    onDeleteOwn(current.photo.id);
+                    onDeleteOwn(shown.photo.id);
                     setOpen(null);
                   }
                 }}
               >
-                🗑
+                <Icon name="trash" size={19} />
               </button>
             )}
             <button type="button" onClick={() => setOpen((open! + 1) % items.length)} aria-label="Next">
-              ›
+              <Icon name="chevron" size={20} />
             </button>
             <button type="button" onClick={() => setOpen(null)} aria-label="Close">
               ✕

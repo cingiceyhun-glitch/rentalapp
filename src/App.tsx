@@ -1,4 +1,5 @@
 import { useRoute } from './router.ts';
+import { Icon } from './components/Icon.tsx';
 import { ListPage } from './pages/ListPage.tsx';
 import { AddPage } from './pages/AddPage.tsx';
 import { DetailPage } from './pages/DetailPage.tsx';
@@ -34,19 +35,22 @@ export function App() {
 
   return (
     <div className="app">
-      <main className="page">{page}</main>
+      <main className={`page ${listing && !listing[2] ? 'detail-page' : ''} ${tab === 'homes' ? 'wide-page' : ''}`}>{page}</main>
       <nav className="tabbar" aria-label="Main">
         <a href="#/" className={tab === 'homes' ? 'active' : ''}>
-          <span aria-hidden>🏠</span>Homes
+          <Icon name="home" size={23} />
+          Homes
         </a>
         <a href="#/viewings" className={tab === 'viewings' ? 'active' : ''}>
-          <span aria-hidden>📅</span>Viewings
+          <Icon name="calendar" size={23} />
+          Viewings
         </a>
-        <a href="#/add" className={`add ${tab === 'add' ? 'active' : ''}`}>
-          <span aria-hidden>＋</span>Add
+        <a href="#/add" className="add" aria-label="Add a home">
+          <Icon name="plus" size={24} />
         </a>
         <a href="#/more" className={tab === 'more' ? 'active' : ''}>
-          <span aria-hidden>⋯</span>More
+          <Icon name="more" size={23} />
+          More
         </a>
       </nav>
     </div>

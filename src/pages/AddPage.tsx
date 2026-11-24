@@ -5,7 +5,8 @@ import { findUrl, parseListingHtml, parseSharedText, sourceOf, type ExtractedLis
 import { extractFromUrl } from '../lib/extract.ts';
 import { ListingForm } from '../components/ListingForm.tsx';
 import { RemotePhoto } from '../components/Photo.tsx';
-import { back, navigate } from '../router.ts';
+import { Icon } from '../components/Icon.tsx';
+import { navigate } from '../router.ts';
 
 type State =
   | { step: 'link'; notice?: string }
@@ -78,7 +79,10 @@ export function AddPage({ params }: { params: URLSearchParams }) {
     return (
       <>
         <header className="page-head">
-          <h1>New home</h1>
+          <div>
+            <div className="eyebrow">Check the details</div>
+            <h1>New home</h1>
+          </div>
         </header>
         {duplicate && (
           <p className="notice">
@@ -107,21 +111,34 @@ export function AddPage({ params }: { params: URLSearchParams }) {
     );
   }
 
+  const canPaste = 'clipboard' in navigator && 'readText' in navigator.clipboard;
+  const ua = navigator.userAgent;
+  const ways = [
+    { id: 'android-app', icon: 'share' as const, title: 'Share from idealista', text: 'Share → Add to HomeHunt on Android', first: /Android/i.test(ua) },
+    { id: 'iphone', icon: 'sparkle' as const, title: 'iPhone Shortcut', text: 'Share → Add to HomeHunt in Safari', first: /iPhone|iPad/i.test(ua) },
+    { id: 'bookmark', icon: 'link' as const, title: 'Bookmark button', text: 'One tap in Chrome or Safari', first: false },
+  ].sort((a, b) => Number(b.first) - Number(a.first));
+
   return (
     <>
       <header className="page-head">
-        <h1>Add a home</h1>
+        <div>
+          <div className="eyebrow">New home</div>
+          <h1>Add a home</h1>
+        </div>
       </header>
       <form
-        className="form add-link"
+        className="paste-card"
         onSubmit={(e) => {
           e.preventDefault();
           void readLink(link);
         }}
       >
-        <label>
-          Paste the link of the ad
+        <label htmlFor="ad-link">Link to the ad</label>
+        <div className="field-icon">
+          <Icon name="link" size={18} />
           <input
+            id="ad-link"
             type="url"
             inputMode="url"
             autoFocus
@@ -129,9 +146,9 @@ export function AddPage({ params }: { params: URLSearchParams }) {
             onChange={(e) => setLink(e.target.value)}
             placeholder="https://www.idealista.pt/imovel/…"
           />
-        </label>
-        <div className="form-actions">
-          {'clipboard' in navigator && 'readText' in navigator.clipboard && (
+        </div>
+        <div className="btn-row">
+          {canPaste && (
             <button
               type="button"
               className="btn"
@@ -148,27 +165,33 @@ export function AddPage({ params }: { params: URLSearchParams }) {
                 }
               }}
             >
-              📋 Paste
+              <Icon name="clipboard" size={17} /> Paste
             </button>
           )}
-          <button type="submit" className="btn primary" disabled={!link.trim()}>
-            Get details
+          <button type="submit" className="btn primary grow" disabled={!link.trim()}>
+            <Icon name="sparkle" size={17} /> Get details
           </button>
         </div>
       </form>
+
       <div className="or">or</div>
       <button type="button" className="btn wide" onClick={() => setState({ step: 'form', listing: emptyListing() })}>
-        ✍️ Enter a home by hand (e.g. a "Arrenda-se" sign on the street)
+        <Icon name="edit" size={17} /> Enter a home by hand
       </button>
-      <p className="muted small center">
-        Works with most property sites that show a link preview when you share them.{' '}
-        <a href="#/more">Add homes faster →</a>
-      </p>
-      <p className="center">
-        <button type="button" className="link" onClick={() => back()}>
-          Cancel
-        </button>
-      </p>
+
+      <div className="section-label">Faster ways to add</div>
+      {ways.map((w) => (
+        <a key={w.id} className="way" href={`#/more?section=${w.id}`}>
+          <span className="way-icon">
+            <Icon name={w.icon} size={20} />
+          </span>
+          <div>
+            <b>{w.title}</b>
+            <span>{w.text}</span>
+          </div>
+          <Icon name="chevron" size={18} />
+        </a>
+      ))}
     </>
   );
 }

@@ -10,7 +10,10 @@ export function EditPage({ id }: { id: string }) {
   return (
     <>
       <header className="page-head">
-        <h1>Edit home</h1>
+        <div>
+          <div className="eyebrow">{listing.title || listing.address || 'Untitled home'}</div>
+          <h1>Edit home</h1>
+        </div>
       </header>
       <ListingForm
         key={listing.id}

@@ -2,12 +2,14 @@ import { useEffect, useRef, useState } from 'react';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { addPhotos as savePhotos, db, deleteListing, deletePhoto, updateListing } from '../db.ts';
 import { STATUSES, type Listing, type Status } from '../types.ts';
-import { dialable, facts, formatPrice, formatViewing, mapsLink, pricePerM2, relativeDay, whatsappLink } from '../lib/format.ts';
+import { dialable, formatPrice, formatViewing, mapsLink, pricePerM2, relativeDay, whatsappLink } from '../lib/format.ts';
 import { viewingIcs } from '../lib/ics.ts';
 import { downloadFile } from '../lib/download.ts';
 import { downscale } from '../lib/images.ts';
 import { loadSettings } from '../lib/settings.ts';
 import { Gallery } from '../components/Gallery.tsx';
+import { Icon, type IconName } from '../components/Icon.tsx';
+import { StatusBadge } from '../components/StatusBadge.tsx';
 import { Stars } from '../components/Stars.tsx';
 import { DictateButton } from '../components/DictateButton.tsx';
 import { appendLine } from '../components/ListingForm.tsx';
@@ -37,70 +39,89 @@ export function DetailPage({ id }: { id: string }) {
     await savePhotos(rows);
   };
 
+  const hasPhotos = l.photoUrls.length > 0 || (photos?.length ?? 0) > 0;
+  const [amount, period] = formatPrice(l).split('/');
+  const specs = [
+    l.bedrooms != null && { value: l.bedrooms === 0 ? 'T0' : l.bedrooms, label: l.bedrooms === 1 ? 'bed' : 'beds' },
+    l.bathrooms != null && { value: l.bathrooms, label: l.bathrooms === 1 ? 'bath' : 'baths' },
+    l.areaM2 != null && { value: l.areaM2, label: 'm²' },
+    ppm && { value: ppm.split(' ')[0], label: ppm.split(' ').slice(1).join(' ') },
+  ].filter(Boolean) as { value: string | number; label: string }[];
+  const actions: { key: string; icon: IconName; label: string; href?: string; external?: boolean; onClick?: () => void }[] = [
+    ...(phone ? [{ key: 'call', icon: 'phone' as const, label: 'Call', href: `tel:${phone}` }] : []),
+    ...(phone ? [{ key: 'wa', icon: 'chat' as const, label: 'WhatsApp', href: whatsappLink(phone, greeting), external: true }] : []),
+    ...(l.url ? [{ key: 'ad', icon: 'link' as const, label: 'Open ad', href: l.url, external: true }] : []),
+    { key: 'photo', icon: 'camera', label: 'Photo', onClick: () => camera.current?.click() },
+    ...(phone ? [{ key: 'sms', icon: 'message' as const, label: 'SMS', href: `sms:${phone}?&body=${encodeURIComponent(greeting)}` }] : []),
+    ...(l.email
+      ? [{ key: 'mail', icon: 'mail' as const, label: 'Email', href: `mailto:${l.email}?subject=${encodeURIComponent(l.title || 'Property enquiry')}&body=${encodeURIComponent(greeting)}` }]
+      : []),
+    ...(l.address ? [{ key: 'map', icon: 'map' as const, label: 'Map', href: mapsLink(l.address), external: true }] : []),
+  ];
+
   return (
     <article className="detail">
-      <div className="detail-top">
-        <button type="button" className="link" onClick={() => back()}>
-          ‹ Homes
-        </button>
-        <button
-          type="button"
-          className={`fav ${l.favorite ? 'on' : ''}`}
-          aria-pressed={l.favorite}
-          aria-label="Favourite"
-          onClick={() => update({ favorite: !l.favorite })}
-        >
-          {l.favorite ? '♥' : '♡'}
-        </button>
-      </div>
+      <button type="button" className="hero-btn left" aria-label="Back" onClick={() => back()}>
+        <Icon name="back" size={22} />
+      </button>
+      <button
+        type="button"
+        className={`hero-btn right ${l.favorite ? 'on' : ''}`}
+        aria-pressed={l.favorite}
+        aria-label={l.favorite ? 'Remove from favourites' : 'Add to favourites'}
+        onClick={() => update({ favorite: !l.favorite })}
+      >
+        <Icon name="heart" size={20} filled={l.favorite} />
+      </button>
 
-      <Gallery urls={l.photoUrls} own={photos ?? []} onDeleteOwn={(pid) => deletePhoto(pid)} />
+      {hasPhotos && (
+        <div className="hero">
+          <Gallery urls={l.photoUrls} own={photos ?? []} onDeleteOwn={(pid) => deletePhoto(pid)} />
+        </div>
+      )}
 
-      <header className="detail-head">
-        <div className="detail-price">
-          {formatPrice(l)} {ppm && <span className="muted small">({ppm})</span>}
+      <div className={`sheet ${hasPhotos ? '' : 'no-hero'}`}>
+        <div className="spread">
+          <span className="price big">
+            {amount}
+            {period && <small>/{period === 'mo' ? 'month' : period}</small>}
+          </span>
+          <StatusBadge status={l.status} />
         </div>
         <h1>{l.title || l.address || 'Untitled home'}</h1>
-        {facts(l) && <p className="muted">{facts(l)}</p>}
         {l.address && (
-          <a href={mapsLink(l.address)} target="_blank" rel="noreferrer" className="address">
-            📍 {l.address}
+          <a href={mapsLink(l.address)} target="_blank" rel="noreferrer" className="addr">
+            <Icon name="pin" size={15} />
+            <span>{l.address}</span>
           </a>
         )}
-      </header>
 
-      <div className="actions">
-        {l.url && (
-          <a className="action" href={l.url} target="_blank" rel="noreferrer">
-            🔗<span>Open ad</span>
-          </a>
+        {specs.length > 0 && (
+          <div className="specs">
+            {specs.map((x) => (
+              <div key={x.label}>
+                <b>{x.value}</b>
+                <span>{x.label}</span>
+              </div>
+            ))}
+          </div>
         )}
-        {phone && (
-          <a className="action" href={`tel:${phone}`}>
-            📞<span>Call</span>
-          </a>
-        )}
-        {phone && (
-          <a className="action" href={whatsappLink(phone, greeting)} target="_blank" rel="noreferrer">
-            💬<span>WhatsApp</span>
-          </a>
-        )}
-        {phone && (
-          <a className="action" href={`sms:${phone}?&body=${encodeURIComponent(greeting)}`}>
-            ✉️<span>SMS</span>
-          </a>
-        )}
-        {l.email && (
-          <a
-            className="action"
-            href={`mailto:${l.email}?subject=${encodeURIComponent(l.title || 'Property enquiry')}&body=${encodeURIComponent(greeting)}`}
-          >
-            📧<span>Email</span>
-          </a>
-        )}
-        <button type="button" className="action" onClick={() => camera.current?.click()}>
-          📷<span>Add photo</span>
-        </button>
+
+        <div className="actions" style={specs.length ? undefined : { marginTop: 16 }}>
+          {actions.map((a) =>
+            a.href ? (
+              <a key={a.key} className="action" href={a.href} {...(a.external ? { target: '_blank', rel: 'noreferrer' } : {})}>
+                <Icon name={a.icon} size={21} />
+                <span>{a.label}</span>
+              </a>
+            ) : (
+              <button key={a.key} type="button" className="action" onClick={a.onClick}>
+                <Icon name={a.icon} size={21} />
+                <span>{a.label}</span>
+              </button>
+            ),
+          )}
+        </div>
         <input
           ref={camera}
           type="file"
@@ -113,100 +134,113 @@ export function DetailPage({ id }: { id: string }) {
             e.target.value = '';
           }}
         />
-      </div>
 
-      <section className="panel">
-        <div className="panel-row">
-          <label className="grow">
-            <span className="muted small">Status</span>
-            <select value={l.status} onChange={(e) => update({ status: e.target.value as Status })}>
-              {STATUSES.map((s) => (
-                <option key={s.id} value={s.id}>
-                  {s.label}
-                </option>
-              ))}
-            </select>
-          </label>
-          <div>
-            <span className="muted small">Your rating</span>
+        <ViewingCard listing={l} onChange={update} />
+
+        <section className="box">
+          <div className="spread">
+            <b>Your rating</b>
             <Stars value={l.rating} onChange={(rating) => update({ rating })} />
           </div>
+          <select value={l.status} onChange={(e) => update({ status: e.target.value as Status })} aria-label="Status">
+            {STATUSES.map((x) => (
+              <option key={x.id} value={x.id}>
+                Status: {x.label}
+              </option>
+            ))}
+          </select>
+        </section>
+
+        <NotesPanel listing={l} onSave={(notes) => update({ notes })} />
+
+        {(l.agentName || l.agency || l.phone || l.email) && (
+          <section className="box">
+            <b>Contact</b>
+            {(l.agentName || l.agency) && (
+              <div className="contact-line">
+                <span>{[l.agentName, l.agency].filter(Boolean).join(' · ')}</span>
+              </div>
+            )}
+            {l.phone && <div className="contact-line muted">{l.phone}</div>}
+            {l.email && <div className="contact-line muted">{l.email}</div>}
+          </section>
+        )}
+
+        {l.description && (
+          <section className="box">
+            <b>From the ad</b>
+            <p className="prewrap small" style={{ color: 'var(--ink-2)', marginBottom: 0 }}>
+              {l.description}
+            </p>
+          </section>
+        )}
+
+        <div className="form-actions">
+          <button
+            type="button"
+            className="btn danger"
+            onClick={async () => {
+              if (confirm('Delete this home and your photos of it?')) {
+                await deleteListing(l.id);
+                navigate('/', { replace: true });
+              }
+            }}
+          >
+            <Icon name="trash" size={18} /> Delete
+          </button>
+          <a className="btn primary" href={`#/l/${l.id}/edit`}>
+            <Icon name="edit" size={18} /> Edit details
+          </a>
         </div>
-        <ViewingEditor listing={l} onChange={update} />
-      </section>
-
-      <NotesPanel listing={l} onSave={(notes) => update({ notes })} />
-
-      {(l.agentName || l.agency || l.phone || l.email) && (
-        <section className="panel">
-          <h2>Contact</h2>
-          <p>
-            {l.agentName}
-            {l.agentName && l.agency && ' · '}
-            {l.agency}
-          </p>
-          {l.phone && <p className="muted">{l.phone}</p>}
-          {l.email && <p className="muted">{l.email}</p>}
-        </section>
-      )}
-
-      {l.description && (
-        <section className="panel">
-          <h2>From the ad</h2>
-          <p className="prewrap">{l.description}</p>
-        </section>
-      )}
-
-      <div className="form-actions">
-        <button
-          type="button"
-          className="btn danger"
-          onClick={async () => {
-            if (confirm('Delete this home and your photos of it?')) {
-              await deleteListing(l.id);
-              navigate('/', { replace: true });
-            }
-          }}
-        >
-          Delete
-        </button>
-        <a className="btn primary" href={`#/l/${l.id}/edit`}>
-          Edit details
-        </a>
+        <p className="muted small center">
+          Added {new Date(l.createdAt).toLocaleDateString()} {l.source && `from ${l.source}`}
+        </p>
       </div>
-      <p className="muted small center">
-        Added {new Date(l.createdAt).toLocaleDateString()} {l.source && `from ${l.source}`}
-      </p>
     </article>
   );
 }
 
-function ViewingEditor({ listing: l, onChange }: { listing: Listing; onChange: (c: Partial<Listing>) => void }) {
+function ViewingCard({ listing: l, onChange }: { listing: Listing; onChange: (c: Partial<Listing>) => void }) {
+  const d = l.viewingAt ? new Date(l.viewingAt) : null;
   return (
-    <div className="viewing">
-      <label className="grow">
-        <span className="muted small">Viewing {l.viewingAt && `· ${relativeDay(l.viewingAt)}`}</span>
-        <input
-          type="datetime-local"
-          value={l.viewingAt ?? ''}
-          onChange={(e) => {
-            const viewingAt = e.target.value || null;
-            const promote = viewingAt && (l.status === 'interested' || l.status === 'contacted');
-            onChange(promote ? { viewingAt, status: 'viewing' } : { viewingAt });
-          }}
-        />
-      </label>
-      {l.viewingAt && (
-        <button
-          type="button"
-          className="btn small"
-          title={formatViewing(l.viewingAt)}
-          onClick={() => downloadFile(`viewing-${l.viewingAt!.slice(0, 10)}.ics`, viewingIcs(l), 'text/calendar')}
-        >
-          📅 Add to calendar
-        </button>
-      )}
-    </div>
+    <section className="box">
+      <div className="viewing-card">
+        <div className={`date-tile ${d ? '' : 'empty'}`}>
+          {d ? (
+            <>
+              <b>{d.getDate()}</b>
+              <span>{d.toLocaleDateString(undefined, { month: 'short' }).toUpperCase()}</span>
+            </>
+          ) : (
+            <Icon name="calendar" size={22} />
+          )}
+        </div>
+        <div className="grow">
+          <b style={{ fontSize: 15 }}>{d ? `${relativeDay(l.viewingAt!)} · ${l.viewingAt!.slice(11, 16)}` : 'No viewing booked'}</b>
+          <div className="muted small">{d ? formatViewing(l.viewingAt!) : 'Pick a date and time below'}</div>
+        </div>
+        {d && (
+          <button
+            type="button"
+            className="btn small soft"
+            onClick={() => downloadFile(`viewing-${l.viewingAt!.slice(0, 10)}.ics`, viewingIcs(l), 'text/calendar')}
+          >
+            + Calendar
+          </button>
+        )}
+      </div>
+      <input
+        type="datetime-local"
+        value={l.viewingAt ?? ''}
+        aria-label="Viewing date and time"
+        style={{ marginTop: 12 }}
+        onChange={(e) => {
+          const viewingAt = e.target.value || null;
+          const promote = viewingAt && (l.status === 'interested' || l.status === 'contacted');
+          onChange(promote ? { viewingAt, status: 'viewing' } : { viewingAt });
+        }}
+      />
+    </section>
   );
 }
 
@@ -229,9 +263,9 @@ function NotesPanel({ listing, onSave }: { listing: Listing; onSave: (notes: str
   };
 
   return (
-    <section className="panel">
-      <h2 className="label-row">
-        Notes
+    <section className="box notes">
+      <div className="spread">
+        <b>Notes</b>
         <DictateButton
           onText={(t) =>
             setNotes((prev) => {
@@ -241,7 +275,7 @@ function NotesPanel({ listing, onSave }: { listing: Listing; onSave: (notes: str
             })
           }
         />
-      </h2>
+      </div>
       <textarea
         rows={Math.max(4, notes.split('\n').length + 1)}
         value={notes}

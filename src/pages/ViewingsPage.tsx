@@ -3,6 +3,7 @@ import { db } from '../db.ts';
 import type { Listing } from '../types.ts';
 import { formatPrice, mapsLink, relativeDay } from '../lib/format.ts';
 import { StatusBadge } from '../components/StatusBadge.tsx';
+import { Icon } from '../components/Icon.tsx';
 
 export function ViewingsPage() {
   const withViewing = useLiveQuery(() => db.listings.where('viewingAt').above('').sortBy('viewingAt'));
@@ -15,7 +16,10 @@ export function ViewingsPage() {
   return (
     <>
       <header className="page-head">
-        <h1>Viewings</h1>
+        <div>
+          <div className="eyebrow">Your agenda</div>
+          <h1>Viewings</h1>
+        </div>
       </header>
       {upcoming.length === 0 && (
         <p className="empty">No viewings booked yet. Set a viewing date on any home and it shows up here.</p>
@@ -57,13 +61,14 @@ function Days({ listings }: { listings: Listing[] }) {
                 </div>
                 {l.address && (
                   <span
-                    className="small link"
+                    className="addr"
                     onClick={(e) => {
                       e.preventDefault();
                       window.open(mapsLink(l.address), '_blank', 'noreferrer');
                     }}
                   >
-                    📍 {l.address}
+                    <Icon name="pin" size={14} />
+                    <span>{l.address}</span>
                   </span>
                 )}
               </div>

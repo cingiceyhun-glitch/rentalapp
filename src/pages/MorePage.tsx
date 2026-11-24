@@ -12,6 +12,12 @@ export function MorePage() {
   const [settings, update] = useSettings();
   const [message, setMessage] = useState<string | null>(null);
   const fileInput = useRef<HTMLInputElement>(null);
+  // Links like #/more?section=iphone scroll to that part of the page.
+  useEffect(() => {
+    const section = new URLSearchParams(location.hash.split('?')[1] ?? '').get('section');
+    if (section) setTimeout(() => document.getElementById(section)?.scrollIntoView({ behavior: 'smooth', block: 'start' }), 50);
+  }, []);
+
   useEffect(() => {
     if (!message) return;
     const t = setTimeout(() => setMessage(null), 5000);
@@ -23,14 +29,17 @@ export function MorePage() {
   return (
     <>
       <header className="page-head">
-        <h1>More</h1>
+        <div>
+          <div className="eyebrow">Settings and help</div>
+          <h1>More</h1>
+        </div>
       </header>
 
       <SyncPanel />
 
       <section className="panel" id="add-faster">
         <h2>Add homes faster</h2>
-        <h3>📱 Android: the "Add to HomeHunt" app (easiest)</h3>
+        <h3 id="android-app">📱 Android: the "Add to HomeHunt" app (easiest)</h3>
         <p>
           A small helper app that puts <b>Add to HomeHunt</b> in Android's Share menu. Share any ad, idealista included, and
           HomeHunt opens with the details filled in.
@@ -140,7 +149,7 @@ export function MorePage() {
           The new home opens in Safari. If you also use HomeHunt from your home screen, sign in under Sync in both so new homes appear
           there too.
         </p>
-        <h3>💻 Computer: one-click bookmark</h3>
+        <h3 id="bookmark">💻 Computer: one-click bookmark</h3>
         <p>
           Drag this button to your bookmarks bar. On any property ad, click it — HomeHunt opens with the details, read straight from
           the page you're looking at (this also works on sites that block automatic reading).
