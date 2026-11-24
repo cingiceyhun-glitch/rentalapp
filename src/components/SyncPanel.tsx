@@ -21,6 +21,8 @@ export function SyncPanel() {
 
   if (status.state === 'signed-out') {
     const submit = async (mode: 'in' | 'up') => {
+      if (!/^\S+@\S+\.\S+$/.test(email.trim())) return setMessage({ text: 'Please enter your email address first.', error: true });
+      if (password.length < 6) return setMessage({ text: 'Please choose a password of at least 6 characters.', error: true });
       setBusy(true);
       setMessage(null);
       if (mode === 'in') {
@@ -41,6 +43,7 @@ export function SyncPanel() {
           The homes already on this device are kept and uploaded.
         </p>
         <form
+          noValidate
           onSubmit={(e) => {
             e.preventDefault();
             void submit('in');
@@ -51,7 +54,7 @@ export function SyncPanel() {
             <input type="email" autoComplete="email" required value={email} onChange={(e) => setEmail(e.target.value)} />
           </label>
           <label>
-            Password
+            Password <span className="muted small">(at least 6 characters)</span>
             <input
               type="password"
               autoComplete="current-password"
@@ -63,7 +66,7 @@ export function SyncPanel() {
           </label>
           {message && <p className={message.error ? 'error small' : 'notice'}>{message.text}</p>}
           <div className="form-actions">
-            <button type="button" className="btn" disabled={busy || !email || password.length < 6} onClick={() => submit('up')}>
+            <button type="button" className="btn" disabled={busy} onClick={() => submit('up')}>
               Create account
             </button>
             <button type="submit" className="btn primary" disabled={busy}>
