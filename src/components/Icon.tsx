@@ -66,6 +66,27 @@ const PATHS = {
   down: <path d="m6 9 6 6 6-6" />,
   trash: <path d="M4 7h16M10 11v6M14 11v6M6 7l1 13h10l1-13M9 7V4h6v3" />,
   chevron: <path d="m9 5 7 7-7 7" />,
+  viewCards: (
+    <>
+      <rect x="4" y="3.5" width="16" height="11" rx="2.5" />
+      <path d="M4 18h16M4 21h10" />
+    </>
+  ),
+  viewTiles: (
+    <>
+      <rect x="3.5" y="3.5" width="7.5" height="7.5" rx="2" />
+      <rect x="13" y="3.5" width="7.5" height="7.5" rx="2" />
+      <rect x="3.5" y="13" width="7.5" height="7.5" rx="2" />
+      <rect x="13" y="13" width="7.5" height="7.5" rx="2" />
+    </>
+  ),
+  viewList: (
+    <>
+      <rect x="3.5" y="4" width="6" height="6" rx="1.5" />
+      <rect x="3.5" y="14" width="6" height="6" rx="1.5" />
+      <path d="M13 6h8M13 9h5M13 16h8M13 19h5" />
+    </>
+  ),
 } as const;
 
 export type IconName = keyof typeof PATHS;

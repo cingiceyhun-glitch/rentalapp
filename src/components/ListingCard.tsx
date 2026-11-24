@@ -47,7 +47,7 @@ export function ListingCard({ listing: l, cover, rank, children }: Props) {
             {ppm && (
               <>
                 <span className="sep">·</span>
-                {ppm}
+                <span className="ppm">{ppm}</span>
               </>
             )}
           </div>

@@ -445,6 +445,33 @@ input[type='checkbox'] {
 .list-bar b {
   font-size: 14px;
 }
+.list-bar b {
+  margin-right: auto;
+}
+.view-switch {
+  display: inline-flex;
+  padding: 3px;
+  margin-right: 8px;
+  border-radius: 12px;
+  background: var(--field);
+  border: 1px solid var(--line);
+}
+.view-switch button {
+  width: 34px;
+  height: 30px;
+  border: none;
+  border-radius: 9px;
+  background: transparent;
+  color: var(--muted);
+  display: grid;
+  place-items: center;
+  cursor: pointer;
+}
+.view-switch button.on {
+  background: var(--surface);
+  color: var(--ink);
+  box-shadow: var(--shadow-sm);
+}
 .sort-btn {
   position: relative;
   display: inline-flex;
@@ -471,9 +498,149 @@ input[type='checkbox'] {
   .page.wide-page {
     max-width: 1040px;
   }
-  .cards {
+  .cards.view-cards {
     grid-template-columns: repeat(2, 1fr);
   }
+  .cards.view-list {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+/* Tiles: two-column photo grid. */
+.cards.view-tiles {
+  grid-template-columns: repeat(2, 1fr);
+  gap: 12px;
+}
+@media (min-width: 720px) {
+  .cards.view-tiles {
+    grid-template-columns: repeat(4, 1fr);
+  }
+}
+.view-tiles .card {
+  border-radius: 18px;
+}
+.view-tiles .card-media {
+  aspect-ratio: 1 / 1;
+}
+.view-tiles .card-body {
+  padding: 10px 12px 0;
+}
+.view-tiles .price {
+  font-size: 17px;
+}
+.view-tiles .price small {
+  font-size: 12px;
+}
+.view-tiles .spread .stars,
+.view-tiles .card-title,
+.view-tiles .facts .sep,
+.view-tiles .facts .ppm,
+.view-tiles .tag.count,
+.view-tiles .card-foot .source,
+.view-tiles .card-foot .when {
+  display: none;
+}
+.view-tiles .facts,
+.view-tiles .addr {
+  font-size: 12.5px;
+}
+.view-tiles .card-foot {
+  padding: 8px 12px 12px;
+  min-height: 0;
+  gap: 6px;
+}
+.view-tiles .card-foot .badge {
+  font-size: 11px;
+  padding: 4px 8px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.view-tiles .rank-controls button {
+  width: 26px;
+  height: 26px;
+}
+.view-tiles .card .heart {
+  width: 32px;
+  height: 32px;
+  right: 8px;
+  top: 8px;
+}
+.view-tiles .tag.rank {
+  left: 8px;
+  top: 8px;
+}
+
+/* List: compact rows with a thumbnail. */
+.cards.view-list {
+  gap: 10px;
+}
+.view-list .card {
+  border-radius: 18px;
+  display: grid;
+  grid-template-columns: 116px minmax(0, 1fr);
+  grid-template-rows: auto 1fr;
+}
+.view-list .card-link {
+  display: contents;
+}
+.view-list .card-media {
+  grid-column: 1;
+  grid-row: 1 / span 2;
+  width: 96px;
+  height: 96px;
+  aspect-ratio: auto;
+  margin: 10px;
+  border-radius: 14px;
+  overflow: hidden;
+}
+.view-list .card-body {
+  grid-column: 2;
+  min-width: 0;
+  padding: 12px 12px 0 0;
+}
+.view-list .price {
+  font-size: 18px;
+}
+.view-list .facts,
+.view-list .addr {
+  font-size: 13px;
+  margin-top: 2px;
+}
+.view-list .card-title,
+.view-list .tag.count,
+.view-list .card-foot .source {
+  display: none;
+}
+.view-list .tag.rank {
+  left: 6px;
+  top: 6px;
+  font-size: 11px;
+  padding: 3px 7px;
+}
+.view-list .card-foot {
+  grid-column: 2;
+  flex-wrap: wrap;
+  padding: 8px 12px 12px 0;
+  min-height: 0;
+  gap: 6px 8px;
+}
+.view-list .card-foot .rank-controls button {
+  width: 28px;
+  height: 28px;
+}
+.view-list .spread .stars {
+  flex: none;
+}
+.view-list .card .heart {
+  left: 76px;
+  right: auto;
+  top: 76px;
+  width: 26px;
+  height: 26px;
+}
+.view-list .heart .icon {
+  width: 15px;
+  height: 15px;
 }
 
 .card {

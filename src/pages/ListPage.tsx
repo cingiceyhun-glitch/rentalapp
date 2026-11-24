@@ -3,12 +3,20 @@ import { useLiveQuery } from 'dexie-react-hooks';
 import { db, updateListing } from '../db.ts';
 import type { Listing, OwnPhoto, Status } from '../types.ts';
 import { ListingCard } from '../components/ListingCard.tsx';
-import { Icon } from '../components/Icon.tsx';
+import { Icon, type IconName } from '../components/Icon.tsx';
 import { relativeDay } from '../lib/format.ts';
 import { useSyncStatus } from '../sync/index.ts';
 
 type Sort = 'ranking' | 'newest' | 'rating' | 'priceAsc' | 'priceDesc' | 'viewing';
 type Filter = 'active' | 'all' | 'favorites' | Status;
+export type View = 'cards' | 'tiles' | 'list';
+type Prefs = { sort: Sort; filter: Filter; view: View };
+
+const VIEWS: { id: View; icon: IconName; label: string }[] = [
+  { id: 'cards', icon: 'viewCards', label: 'Cards' },
+  { id: 'tiles', icon: 'viewTiles', label: 'Tiles' },
+  { id: 'list', icon: 'viewList', label: 'List' },
+];
 
 const SORTS: { id: Sort; label: string }[] = [
   { id: 'ranking', label: 'My ranking' },
@@ -22,19 +30,19 @@ const SORTS: { id: Sort; label: string }[] = [
 const CLOSED: Status[] = ['rejected', 'unavailable'];
 
 const PREFS_KEY = 'homehunt-list';
-function loadPrefs(): { sort: Sort; filter: Filter } {
+function loadPrefs(): Prefs {
   try {
-    return { sort: 'ranking', filter: 'active', ...JSON.parse(localStorage.getItem(PREFS_KEY) ?? '{}') };
+    return { sort: 'ranking', filter: 'active', view: 'cards', ...JSON.parse(localStorage.getItem(PREFS_KEY) ?? '{}') };
   } catch {
-    return { sort: 'ranking', filter: 'active' };
+    return { sort: 'ranking', filter: 'active', view: 'cards' };
   }
 }
 
 export function ListPage() {
   const listings = useLiveQuery(() => db.listings.toArray());
   const [query, setQuery] = useState('');
-  const [{ sort, filter }, setPrefs] = useState(loadPrefs);
-  const setPref = (p: Partial<{ sort: Sort; filter: Filter }>) =>
+  const [{ sort, filter, view }, setPrefs] = useState(loadPrefs);
+  const setPref = (p: Partial<Prefs>) =>
     setPrefs((prev) => {
       const next = { ...prev, ...p };
       try {
@@ -175,6 +183,22 @@ export function ListPage() {
 
       <div className="list-bar">
         <b>{SORTS.find((x) => x.id === sort)?.label}</b>
+        <div className="view-switch" role="radiogroup" aria-label="View">
+          {VIEWS.map((v) => (
+            <button
+              key={v.id}
+              type="button"
+              role="radio"
+              aria-checked={view === v.id}
+              aria-label={v.label}
+              title={v.label}
+              className={view === v.id ? 'on' : ''}
+              onClick={() => setPref({ view: v.id })}
+            >
+              <Icon name={v.icon} size={17} />
+            </button>
+          ))}
+        </div>
         <span className="sort-btn">
           Sort <Icon name="down" size={15} />
           <select value={sort} onChange={(e) => setPref({ sort: e.target.value as Sort })} aria-label="Sort">
@@ -189,7 +213,7 @@ export function ListPage() {
 
       {visible.length === 0 && <p className="empty">Nothing matches. Try another search or filter.</p>}
 
-      <div className="cards">
+      <div className={`cards view-${view}`}>
         {visible.map((l, i) => (
           <ListingCard key={l.id} listing={l} cover={covers?.get(l.id)?.blob} rank={sort === 'ranking' ? i + 1 : undefined}>
             {sort === 'ranking' && (
