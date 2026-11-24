@@ -13,3 +13,14 @@ export function bookmarkletCode(origin: string): string {
     `location.href=${JSON.stringify(origin)}+'/#/add?via=bookmarklet&url='+encodeURIComponent(location.href)+'&page='+encodeURIComponent(p)})()`;
   return `javascript:${encodeURIComponent(src)}`;
 }
+
+/**
+ * Script for the iPhone Shortcut's "Run JavaScript on Web Page" action, so
+ * Safari's Share menu can add the ad. The Shortcut then opens the returned URL.
+ */
+export function shortcutScript(origin: string): string {
+  return (
+    `var page = ${snapshot.trim()};\n` +
+    `completion(${JSON.stringify(origin)} + '/#/add?via=bookmarklet&url=' + encodeURIComponent(location.href) + '&page=' + encodeURIComponent(page));\n`
+  );
+}

@@ -1,9 +1,9 @@
-import { useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { db } from '../db.ts';
 import { toCsv } from '../lib/csv.ts';
 import { exportBackup, importBackup } from '../lib/backup.ts';
 import { downloadFile } from '../lib/download.ts';
-import { bookmarkletCode } from '../lib/bookmarklet.ts';
+import { bookmarkletCode, shortcutScript } from '../lib/bookmarklet.ts';
 import { useSettings } from '../lib/settings.ts';
 import { speechSupported } from '../lib/speech.ts';
 import { SyncPanel } from '../components/SyncPanel.tsx';
@@ -12,6 +12,11 @@ export function MorePage() {
   const [settings, update] = useSettings();
   const [message, setMessage] = useState<string | null>(null);
   const fileInput = useRef<HTMLInputElement>(null);
+  useEffect(() => {
+    if (!message) return;
+    const t = setTimeout(() => setMessage(null), 5000);
+    return () => clearTimeout(t);
+  }, [message]);
   const today = new Date().toISOString().slice(0, 10);
   const origin = location.origin;
 
@@ -84,21 +89,57 @@ export function MorePage() {
           Install HomeHunt from Chrome (<b>⋮ → Add to Home screen</b>). Then tap <b>Share → HomeHunt</b> on an ad in any app.
           This saves the link instantly, and fills in the details on sites that allow it.
         </p>
-        <h3>🍏 iPhone: a Shortcut in the Share sheet</h3>
+        <h3 id="iphone">🍏 iPhone: Share → Add to HomeHunt</h3>
+        <p>
+          A Shortcut that reads the ad you have open in Safari (idealista included) and opens HomeHunt with the details filled in.
+          You set it up once, in about 3 minutes:
+        </p>
         <ol>
           <li>
-            In Safari, tap Share → <b>Add to Home Screen</b> to install HomeHunt.
+            Tap{' '}
+            <button
+              type="button"
+              className="btn small"
+              onClick={async () => {
+                try {
+                  await navigator.clipboard.writeText(shortcutScript(origin));
+                  setMessage('Shortcut script copied. Now open the Shortcuts app (step 2).');
+                } catch {
+                  setMessage('Could not copy automatically. Please try again.');
+                }
+              }}
+            >
+              📋 Copy Shortcut script
+            </button>
           </li>
           <li>
-            Open the <b>Shortcuts</b> app → <b>+</b> → name it “Save to HomeHunt”. In its settings turn on <b>Show in Share Sheet</b>{' '}
-            (accepts URLs and Safari web pages).
+            Open the <b>Shortcuts</b> app and tap <b>+</b>. Tap the name at the top, choose <b>Rename</b> and call it{' '}
+            <b>Add to HomeHunt</b>.
           </li>
           <li>
-            Add the action <b>URL Encode</b> on the <b>Shortcut Input</b>, then <b>Open URLs</b> with{' '}
-            <code className="break">{origin}/share?url=</code> followed by the <b>URL Encoded Text</b> variable.
+            Tap <b>ⓘ</b> at the bottom and turn on <b>Show in Share Sheet</b>, then <b>Done</b>. At the top it now says{' '}
+            <i>Receive … from Share Sheet</i>: tap the blue word after <i>Receive</i> and leave only <b>Safari web pages</b>{' '}
+            ticked.
           </li>
-          <li>Now tap Share on any ad → “Save to HomeHunt”.</li>
+          <li>
+            Search the actions for <b>Run JavaScript on Web Page</b> and add it. Tap inside its code, select all, and{' '}
+            <b>Paste</b> the script you copied.
+          </li>
+          <li>
+            Search for <b>Open URLs</b> and add it below. It should say <i>Open JavaScript Result</i>. Tap <b>Done</b>.
+          </li>
+          <li>
+            In iPhone <b>Settings → Apps → Shortcuts → Advanced</b>, turn on <b>Allow Running Scripts</b>.
+          </li>
         </ol>
+        <p>
+          <b>To use it:</b> open the ad in Safari, tap <b>Share</b> and choose <b>Add to HomeHunt</b>. The first time, tap{' '}
+          <b>Allow</b>. In the idealista app, tap <b>Share → Open in Safari</b> first.
+        </p>
+        <p className="muted small">
+          The new home opens in Safari. If you also use HomeHunt from your home screen, sign in under Sync in both so new homes appear
+          there too.
+        </p>
         <h3>💻 Computer: one-click bookmark</h3>
         <p>
           Drag this button to your bookmarks bar. On any property ad, click it — HomeHunt opens with the details, read straight from
