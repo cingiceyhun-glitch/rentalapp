@@ -1,5 +1,5 @@
 // Offline support: network-first for the app shell, cache-first for built assets.
-const CACHE = 'homehunt-v1';
+const CACHE = 'homehunt-v2';
 
 self.addEventListener('install', (event) => {
   event.waitUntil(caches.open(CACHE).then((c) => c.addAll(['/', '/manifest.webmanifest', '/icon.svg'])));
@@ -23,8 +23,11 @@ self.addEventListener('fetch', (event) => {
     event.respondWith(
       fetch(request)
         .then((res) => {
-          const copy = res.clone();
-          caches.open(CACHE).then((c) => c.put('/', copy));
+          // Only the app shell is kept for offline use, never a downloaded file.
+          if (res.ok && (res.headers.get('content-type') ?? '').includes('text/html')) {
+            const copy = res.clone();
+            caches.open(CACHE).then((c) => c.put('/', copy));
+          }
           return res;
         })
         .catch(() => caches.match('/')),
