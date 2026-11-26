@@ -12,11 +12,10 @@ import { Icon } from './Icon.tsx';
 // own places (work, school…) and distances to them.
 
 const START: L.LatLngExpression = [38.6979, -9.4215]; // Cascais
-const TILES = {
-  light: 'https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png',
-  dark: 'https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png',
-};
-const ATTRIBUTION = '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> &copy; <a href="https://carto.com/attributions">CARTO</a>';
+// OpenStreetMap's standard tiles: free, no key, attribution required. Dark mode
+// darkens them with a CSS filter (see .map in styles.css).
+const TILES = 'https://tile.openstreetmap.org/{z}/{x}/{y}.png';
+const ATTRIBUTION = '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors';
 
 export default function HomesMap({ listings }: { listings: Listing[] }) {
   const box = useRef<HTMLDivElement>(null);
@@ -28,7 +27,6 @@ export default function HomesMap({ listings }: { listings: Listing[] }) {
   const [moving, setMoving] = useState<string | null>(null);
   /** A home being placed by tapping the map. */
   const [placing, setPlacing] = useState<Listing | null>(null);
-  const dark = useDarkMode();
 
   // Look up locations for homes that don't have one yet.
   const lookupKey = listings.filter(needsLocation).map((l) => l.id + l.address).join('|');
@@ -63,12 +61,12 @@ export default function HomesMap({ listings }: { listings: Listing[] }) {
   }, [placing]);
 
   useEffect(() => {
-    const tiles = L.tileLayer(dark ? TILES.dark : TILES.light, { attribution: ATTRIBUTION, maxZoom: 19, subdomains: 'abcd' });
+    const tiles = L.tileLayer(TILES, { attribution: ATTRIBUTION, maxZoom: 19 });
     tiles.addTo(map.current!);
     return () => {
       tiles.remove();
     };
-  }, [dark]);
+  }, []);
 
   useEffect(() => {
     const m = map.current!;
@@ -120,7 +118,7 @@ export default function HomesMap({ listings }: { listings: Listing[] }) {
     if (key !== fittedFor.current && points.length) {
       fittedFor.current = key;
       if (points.length === 1) m.setView(points[0], 15);
-      else m.fitBounds(L.latLngBounds(points), { padding: [48, 48], maxZoom: 15 });
+      else m.fitBounds(L.latLngBounds(points), { paddingTopLeft: [70, 60], paddingBottomRight: [70, 30], maxZoom: 15 });
     }
   }, [listings, places, moving]);
 
@@ -204,7 +202,7 @@ function PlacesBar({ places, onChange }: { places: Place[]; onChange: (p: Place[
         ))}
         {!adding && (
           <button type="button" className="chip" onClick={() => setAdding(true)}>
-            + {places.length ? 'Add place' : 'Add a place you go to often (work, school…)'}
+            + {places.length ? 'Add place' : 'Add a place (work, school…)'}
           </button>
         )}
       </div>
@@ -227,7 +225,7 @@ function PlacesBar({ places, onChange }: { places: Place[]; onChange: (p: Place[
           }}
         >
           <div className="row">
-            <label className="narrow" style={{ flex: '0 0 34%' }}>
+            <label style={{ flex: '0 0 36%' }}>
               Name
               <input value={name} onChange={(e) => setName(e.target.value)} placeholder="Work" />
             </label>
@@ -237,7 +235,7 @@ function PlacesBar({ places, onChange }: { places: Place[]; onChange: (p: Place[
             </label>
           </div>
           {error && <p className="error small">{error}</p>}
-          <div className="form-actions" style={{ margin: 0 }}>
+          <div className="form-actions">
             <button type="button" className="btn" onClick={() => setAdding(false)}>
               Cancel
             </button>
@@ -284,16 +282,4 @@ function shortPrice(l: Listing): string {
 
 function esc(s: string): string {
   return s.replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c]!);
-}
-
-function useDarkMode(): boolean {
-  const query = '(prefers-color-scheme: dark)';
-  const [dark, setDark] = useState(() => window.matchMedia(query).matches);
-  useEffect(() => {
-    const mq = window.matchMedia(query);
-    const on = () => setDark(mq.matches);
-    mq.addEventListener('change', on);
-    return () => mq.removeEventListener('change', on);
-  }, []);
-  return dark;
 }
