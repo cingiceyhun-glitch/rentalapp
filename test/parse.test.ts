@@ -163,3 +163,18 @@ describe('duplicate photos', () => {
     expect(parseListingHtml(html, 'https://www.idealista.pt/imovel/1/').photoUrls).toHaveLength(2);
   });
 });
+
+describe('coordinates', () => {
+  it('reads them from JSON-LD, meta tags or the page map data', () => {
+    const url = 'https://www.example.pt/imovel/1';
+    const ld = '<script type="application/ld+json">{"@type":"Apartment","geo":{"@type":"GeoCoordinates","latitude":38.7012,"longitude":-9.4189}}</script>';
+    expect(parseListingHtml(ld, url)).toMatchObject({ lat: 38.7012, lng: -9.4189 });
+    const meta = '<meta property="place:location:latitude" content="38.69"><meta property="place:location:longitude" content="-9.42">';
+    expect(parseListingHtml(meta, url)).toMatchObject({ lat: 38.69, lng: -9.42 });
+    const snap = '<meta name="homehunt:lat" content="38.7051"><meta name="homehunt:lng" content="-9.3961">';
+    expect(parseListingHtml(snap, url)).toMatchObject({ lat: 38.7051, lng: -9.3961 });
+    const script = '<script>var map = {"latitude":"38.7071","longitude":"-9.4252","zoom":15}</script>';
+    expect(parseListingHtml(script, url)).toMatchObject({ lat: 38.7071, lng: -9.4252 });
+    expect(parseListingHtml('<p>no map</p>', url).lat).toBeUndefined();
+  });
+});

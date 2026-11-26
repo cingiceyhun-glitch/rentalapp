@@ -22,6 +22,8 @@ export interface ExtractedListing {
   agency?: string;
   phone?: string;
   email?: string;
+  lat?: number;
+  lng?: number;
   photoUrls: string[];
 }
 
@@ -106,6 +108,12 @@ export function parseListingHtml(html: string, pageUrl: string): ExtractedListin
   result.phone = clean(ld.telephone ?? findTelLink(html));
   result.email = clean(ld.email ?? findMailtoLink(html));
 
+  const coords = ld.geo ?? findCoordinates(meta, html);
+  if (coords) {
+    result.lat = coords[0];
+    result.lng = coords[1];
+  }
+
   result.photoUrls = collectPhotos(html, pageUrl, source, [...ld.images, ...meta.images]);
 
   for (const key of Object.keys(result) as (keyof ExtractedListing)[]) {
@@ -141,6 +149,36 @@ function readAttributes(tag: string): Record<string, string> {
     attrs[m[1].toLowerCase()] = m[3] ?? m[4] ?? m[5] ?? '';
   }
   return attrs;
+}
+
+function validCoords(lat: number, lng: number): [number, number] | undefined {
+  return Number.isFinite(lat) && Number.isFinite(lng) && Math.abs(lat) <= 90 && Math.abs(lng) <= 180 && (lat !== 0 || lng !== 0)
+    ? [lat, lng]
+    : undefined;
+}
+
+/** Coordinates from map meta tags, or from the page's own map data (sent by the bookmark/app as homehunt:lat/lng). */
+function findCoordinates(meta: Record<string, string>, html: string): [number, number] | undefined {
+  const pairs: [string | undefined, string | undefined][] = [
+    [meta['homehunt:lat'], meta['homehunt:lng']],
+    [meta['place:location:latitude'], meta['place:location:longitude']],
+    [meta['og:latitude'], meta['og:longitude']],
+    [meta['latitude'], meta['longitude']],
+  ];
+  for (const [a, b] of pairs) {
+    const c = a && b ? validCoords(Number(a), Number(b)) : undefined;
+    if (c) return c;
+  }
+  const pos = (meta['geo.position'] ?? meta['icbm'])?.split(/[;,]\s*/);
+  if (pos?.length === 2) return validCoords(Number(pos[0]), Number(pos[1]));
+  return findCoordinatesInScripts(html);
+}
+
+/** "latitude": 38.69, "longitude": -9.42 (and lat/lng, lat/lon spellings) anywhere in the page. */
+export function findCoordinatesInScripts(html: string): [number, number] | undefined {
+  const m =
+    html.match(/["']?(?:latitude|lat)["']?\s*[:=]\s*["']?(-?\d{1,2}\.\d{3,})["']?\s*,\s*["']?(?:longitude|lng|lon)["']?\s*[:=]\s*["']?(-?\d{1,3}\.\d{3,})/i);
+  return m ? validCoords(Number(m[1]), Number(m[2])) : undefined;
 }
 
 /** "T1 flat for rent in X — idealista" → "T1 flat for rent in X". */
@@ -179,6 +217,7 @@ interface LdFacts {
   email?: string;
   agentName?: string;
   agency?: string;
+  geo?: [number, number];
   images: string[];
 }
 
@@ -228,6 +267,10 @@ function walkLd(node: unknown, facts: LdFacts, depth: number): void {
       facts.area ??= (obj.floorSize as Record<string, unknown>).value;
     }
     if (obj.address) facts.address ??= formatAddress(obj.address);
+    if (obj.geo && typeof obj.geo === 'object') {
+      const g = obj.geo as Record<string, unknown>;
+      facts.geo ??= validCoords(Number(g.latitude), Number(g.longitude));
+    }
     facts.images.push(...ldImages(obj.image ?? obj.photo));
   }
 

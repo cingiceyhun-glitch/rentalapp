@@ -16,7 +16,9 @@
     add(m.currentSrc); add(m.src); add(m.getAttribute('data-src')); add(m.getAttribute('data-ondemandimg'));
   });
   (d.documentElement.outerHTML.replace(/\\\//g, '/').match(/https?:\/\/[^"'\s)\\]+?\.(?:jpe?g|webp)/gi) || []).forEach(add);
+  var geo = d.documentElement.outerHTML.match(/["']?(?:latitude|lat)["']?\s*[:=]\s*["']?(-?\d{1,2}\.\d{3,})["']?\s*,\s*["']?(?:longitude|lng|lon)["']?\s*[:=]\s*["']?(-?\d{1,3}\.\d{3,})/i);
   var p = '<title>' + e(d.title) + '</title>' +
+    (geo ? '<meta name="homehunt:lat" content="' + geo[1] + '"><meta name="homehunt:lng" content="' + geo[2] + '">' : '') +
     q('meta[property],meta[name],meta[itemprop]').map(function (m) { return m.outerHTML; }).join('') +
     q('a[href^="tel:"],a[href^="mailto:"]').map(function (a) { return '<a href="' + e(a.getAttribute('href')) + '"></a>'; }).join('') +
     images.slice(0, 150).map(function (u) { return '<img src="' + e(u) + '">'; }).join('') +

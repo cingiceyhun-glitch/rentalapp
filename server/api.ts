@@ -2,6 +2,7 @@ import type { IncomingMessage, ServerResponse } from 'node:http';
 import { lookup } from 'node:dns/promises';
 import { isIP } from 'node:net';
 import { parseListingHtml, type ExtractedListing } from '../src/shared/parse.ts';
+import { geocode } from './geocode.ts';
 
 const FETCH_TIMEOUT_MS = 12_000;
 const MAX_HTML_BYTES = 5_000_000;
@@ -16,6 +17,17 @@ export async function handleApi(req: IncomingMessage, res: ServerResponse): Prom
       supabaseUrl: process.env.SUPABASE_URL ?? null,
       supabaseAnonKey: process.env.SUPABASE_ANON_KEY ?? null,
     });
+  }
+  if (url.pathname === '/api/geocode') {
+    const q = url.searchParams.get('q')?.trim();
+    if (!q) return sendJson(res, 400, { error: 'missing_q' });
+    const cc = url.searchParams.get('cc')?.toLowerCase().replace(/[^a-z,]/g, '') || undefined;
+    try {
+      const hit = await geocode(q.slice(0, 300), cc);
+      return hit ? sendJson(res, 200, hit) : sendJson(res, 404, { error: 'not_found' });
+    } catch (err) {
+      return sendJson(res, 502, { error: 'geocoder_failed', message: String((err as Error).message) });
+    }
   }
   if (url.pathname !== '/api/extract') return false;
 

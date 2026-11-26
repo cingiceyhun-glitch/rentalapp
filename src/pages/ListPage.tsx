@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { lazy, Suspense, useMemo, useState } from 'react';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { db, updateListing } from '../db.ts';
 import type { Listing, OwnPhoto, Status } from '../types.ts';
@@ -9,14 +9,17 @@ import { useSyncStatus } from '../sync/index.ts';
 
 type Sort = 'ranking' | 'newest' | 'rating' | 'priceAsc' | 'priceDesc' | 'viewing';
 type Filter = 'active' | 'all' | 'favorites' | Status;
-export type View = 'cards' | 'tiles' | 'list';
+export type View = 'cards' | 'tiles' | 'list' | 'map';
 type Prefs = { sort: Sort; filter: Filter; view: View };
 
 const VIEWS: { id: View; icon: IconName; label: string }[] = [
   { id: 'cards', icon: 'viewCards', label: 'Cards' },
   { id: 'tiles', icon: 'viewTiles', label: 'Tiles' },
   { id: 'list', icon: 'viewList', label: 'List' },
+  { id: 'map', icon: 'map', label: 'Map' },
 ];
+
+const HomesMap = lazy(() => import('../components/HomesMap.tsx'));
 
 const SORTS: { id: Sort; label: string }[] = [
   { id: 'ranking', label: 'My ranking' },
@@ -213,22 +216,28 @@ export function ListPage() {
 
       {visible.length === 0 && <p className="empty">Nothing matches. Try another search or filter.</p>}
 
-      <div className={`cards view-${view}`}>
-        {visible.map((l, i) => (
-          <ListingCard key={l.id} listing={l} cover={covers?.get(l.id)?.blob} rank={sort === 'ranking' ? i + 1 : undefined}>
-            {sort === 'ranking' && (
-              <div className="rank-controls">
-                <button type="button" aria-label="Move up" disabled={i === 0} onClick={() => move(i, -1)}>
-                  <Icon name="up" size={16} />
-                </button>
-                <button type="button" aria-label="Move down" disabled={i === visible.length - 1} onClick={() => move(i, 1)}>
-                  <Icon name="down" size={16} />
-                </button>
-              </div>
-            )}
-          </ListingCard>
-        ))}
-      </div>
+      {view === 'map' ? (
+        <Suspense fallback={<div className="map-box map-loading">Loading map…</div>}>
+          <HomesMap listings={visible} />
+        </Suspense>
+      ) : (
+        <div className={`cards view-${view}`}>
+          {visible.map((l, i) => (
+            <ListingCard key={l.id} listing={l} cover={covers?.get(l.id)?.blob} rank={sort === 'ranking' ? i + 1 : undefined}>
+              {sort === 'ranking' && (
+                <div className="rank-controls">
+                  <button type="button" aria-label="Move up" disabled={i === 0} onClick={() => move(i, -1)}>
+                    <Icon name="up" size={16} />
+                  </button>
+                  <button type="button" aria-label="Move down" disabled={i === visible.length - 1} onClick={() => move(i, 1)}>
+                    <Icon name="down" size={16} />
+                  </button>
+                </div>
+              )}
+            </ListingCard>
+          ))}
+        </div>
+      )}
     </>
   );
 }

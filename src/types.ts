@@ -48,6 +48,14 @@ export interface Listing {
 
   /** Photos taken from the ad (remote URLs). */
   photoUrls: string[];
+
+  /** Map location, from the ad or looked up from the address (optional: older homes have none). */
+  lat?: number | null;
+  lng?: number | null;
+  /** The address the location was looked up for; a different address means look it up again. */
+  geoFor?: string;
+  /** Only the area was found, not the exact street. */
+  geoApprox?: boolean;
 }
 
 /** A photo the user took or uploaded themselves, stored on the device. */

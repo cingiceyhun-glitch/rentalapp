@@ -24,6 +24,7 @@ export function AddPage({ params }: { params: URLSearchParams }) {
       const { photoUrls, ...rest } = extracted;
       for (const [k, v] of Object.entries(rest)) if (v !== undefined) (listing as unknown as Record<string, unknown>)[k] = v;
       listing.photoUrls = uniquePhotos(photoUrls);
+      if (listing.lat != null) listing.geoFor = listing.address;
     }
     setState({ step: 'form', listing, notice, duplicate: await findByUrl(url) });
   };
