@@ -7,6 +7,7 @@ import { facts, formatPrice } from '../lib/format.ts';
 import { distanceKm, formatKm, loadPlaces, locateHomes, lookupAddress, needsLocation, savePlaces, type Place } from '../lib/geo.ts';
 import { uniquePhotos } from '../shared/parse.ts';
 import { Icon } from './Icon.tsx';
+import { RemotePhoto } from './Photo.tsx';
 
 // Map of the homes in the current list (search and filters apply), with your
 // own places (work, school…) and distances to them.
@@ -25,6 +26,8 @@ export default function HomesMap({ listings }: { listings: Listing[] }) {
   const [places, setPlaces] = useState<Place[]>(loadPlaces);
   const [locating, setLocating] = useState(0);
   const [moving, setMoving] = useState<string | null>(null);
+  /** The home whose card is shown at the bottom of the map. */
+  const [selected, setSelected] = useState<string | null>(null);
   /** A home being placed by tapping the map. */
   const [placing, setPlacing] = useState<Listing | null>(null);
 
@@ -92,18 +95,16 @@ export default function HomesMap({ listings }: { listings: Listing[] }) {
       const marker = L.marker([l.lat, l.lng], {
         icon: L.divIcon({
           className: 'map-pin-wrap',
-          html: `<span class="map-pin ${l.favorite ? 'fav' : ''} ${l.geoApprox ? 'approx' : ''} ${moving === l.id ? 'moving' : ''}" style="--pin:${color}"><i></i>${l.geoApprox ? '≈ ' : ''}${esc(shortPrice(l))}${l.favorite ? ' <b>♥</b>' : ''}</span>`,
+          html: `<span class="map-pin ${l.favorite ? 'fav' : ''} ${l.geoApprox ? 'approx' : ''} ${moving === l.id ? 'moving' : ''} ${selected === l.id ? 'selected' : ''}" style="--pin:${color}"><i></i>${l.geoApprox ? '≈ ' : ''}${esc(shortPrice(l))}${l.favorite ? ' <b>♥</b>' : ''}</span>`,
           iconSize: [0, 0],
         }),
         draggable: moving === l.id,
         riseOnHover: true,
+        zIndexOffset: selected === l.id ? 500 : 0,
       }).addTo(layer);
-      marker.bindPopup(() => popupHtml(l, places), { closeButton: false, minWidth: 240, maxWidth: 260, offset: [0, -30] });
-      marker.on('popupopen', (e) => {
-        e.popup.getElement()?.querySelector('[data-move]')?.addEventListener('click', () => {
-          marker.closePopup();
-          setMoving(l.id);
-        });
+      marker.on('click', (e) => {
+        L.DomEvent.stopPropagation(e);
+        setSelected(l.id);
       });
       marker.on('dragend', async () => {
         const { lat, lng } = marker.getLatLng();
@@ -120,9 +121,34 @@ export default function HomesMap({ listings }: { listings: Listing[] }) {
       if (points.length === 1) m.setView(points[0], 15);
       else m.fitBounds(L.latLngBounds(points), { paddingTopLeft: [70, 60], paddingBottomRight: [70, 30], maxZoom: 15 });
     }
-  }, [listings, places, moving]);
+  }, [listings, places, moving, selected]);
+
+  // Keep the tapped pin visible above the card at the bottom of the map.
+  useEffect(() => {
+    const m = map.current;
+    const l = listings.find((x) => x.id === selected);
+    if (!m || !l || l.lat == null || l.lng == null) return;
+    const pt = m.latLngToContainerPoint([l.lat, l.lng]);
+    const size = m.getSize();
+    const bottomLimit = size.y - 250; // the card's height plus room for the pin label
+    const dy = pt.y > bottomLimit ? pt.y - bottomLimit : pt.y < 70 ? pt.y - 70 : 0;
+    const dx = pt.x < 60 ? pt.x - 60 : pt.x > size.x - 60 ? pt.x - (size.x - 60) : 0;
+    // After the tap has finished, so the map's own tap handling doesn't cancel the move.
+    if (dx || dy) setTimeout(() => m.panBy([dx, dy], { animate: true, duration: 0.3 }), 0);
+  }, [selected]);
+
+  // Tapping the map (not a pin) closes the card.
+  useEffect(() => {
+    const m = map.current!;
+    const close = () => setSelected(null);
+    m.on('click', close);
+    return () => {
+      m.off('click', close);
+    };
+  }, []);
 
   const missing = listings.filter((l) => l.lat == null || l.lng == null);
+  const current = listings.find((l) => l.id === selected && l.lat != null);
 
   return (
     <div className="map-view">
@@ -136,6 +162,17 @@ export default function HomesMap({ listings }: { listings: Listing[] }) {
               Cancel
             </button>
           </div>
+        )}
+        {current && !moving && !placing && (
+          <HomeCard
+            listing={current}
+            places={places}
+            onClose={() => setSelected(null)}
+            onMove={() => {
+              setSelected(null);
+              setMoving(current.id);
+            }}
+          />
         )}
         {moving && (
           <div className="map-note action">
@@ -249,26 +286,48 @@ function PlacesBar({ places, onChange }: { places: Place[]; onChange: (p: Place[
   );
 }
 
-function popupHtml(l: Listing, places: Place[]): string {
+function HomeCard({ listing: l, places, onClose, onMove }: { listing: Listing; places: Place[]; onClose: () => void; onMove: () => void }) {
   const photo = uniquePhotos(l.photoUrls)[0];
-  const distances = places
-    .map((p) => `<div><span>★ ${esc(p.name)}</span><b>${formatKm(distanceKm(p, { lat: l.lat!, lng: l.lng! }))}</b></div>`)
-    .join('');
-  return `
-    <div class="map-pop">
-      ${photo ? `<img src="${esc(photo)}" referrerpolicy="no-referrer" alt="">` : ''}
-      <div class="map-pop-body">
-        <div class="price">${esc(formatPrice(l))}</div>
-        <div class="facts">${esc(facts(l))}</div>
-        <div class="map-pop-title">${esc(l.title || l.address || 'Untitled home')}</div>
-        ${l.geoApprox ? '<div class="map-pop-approx">≈ Approximate: only the area is known. Use “Move pin” when you know the exact spot.</div>' : ''}
-        ${distances ? `<div class="map-pop-dist">${distances}</div>` : ''}
-        <div class="map-pop-actions">
-          <button type="button" data-move>Move pin</button>
-          <a href="#/l/${l.id}">Open ›</a>
+  const [amount, period] = formatPrice(l).split('/');
+  return (
+    <div className="map-card" role="dialog" aria-label={l.title || l.address || 'Home'}>
+      <a className="map-card-main" href={`#/l/${l.id}`}>
+        <div className="map-card-photo">
+          {photo ? <RemotePhoto src={photo} /> : <div className="photo-missing"><Icon name="home" size={26} /></div>}
         </div>
+        <div className="map-card-body">
+          <div className="price">
+            {amount}
+            {period && <small>/{period}</small>}
+            {l.favorite && <span className="map-card-fav">♥</span>}
+          </div>
+          <div className="facts">{facts(l) || 'Size not set'}</div>
+          <div className="map-card-title">{l.title || l.address || 'Untitled home'}</div>
+          {places.length > 0 && (
+            <div className="map-card-dist">
+              {places.map((p) => (
+                <span key={p.id}>
+                  ★ {p.name} {formatKm(distanceKm(p, { lat: l.lat!, lng: l.lng! }))}
+                </span>
+              ))}
+            </div>
+          )}
+        </div>
+      </a>
+      {l.geoApprox && <div className="map-card-approx">≈ Approximate location: only the area is known</div>}
+      <div className="map-card-actions">
+        <button type="button" className="btn small" onClick={onMove}>
+          <Icon name="pin" size={15} /> Move pin
+        </button>
+        <a className="btn small soft" href={`#/l/${l.id}`}>
+          Open <Icon name="chevron" size={15} />
+        </a>
       </div>
-    </div>`;
+      <button type="button" className="map-card-close" aria-label="Close" onClick={onClose}>
+        ×
+      </button>
+    </div>
+  );
 }
 
 /** "€2.5k" for map pins. */
