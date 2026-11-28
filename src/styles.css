@@ -1471,7 +1471,7 @@ code {
 
 .map-box {
   position: relative;
-  height: max(380px, calc(100dvh - 360px));
+  height: max(420px, calc(100dvh - 300px));
   border-radius: var(--r-lg);
   overflow: hidden;
   border: 1px solid var(--line);
@@ -1855,4 +1855,16 @@ code {
   font-size: 22px;
   line-height: 1;
   cursor: pointer;
+}
+
+@media (min-width: 720px) {
+  .map-box {
+    height: max(560px, calc(100dvh - 220px));
+  }
+  .map-card {
+    right: auto;
+    left: 14px;
+    bottom: 14px;
+    width: 400px;
+  }
 }

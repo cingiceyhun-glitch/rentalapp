@@ -1,6 +1,6 @@
 import { Dexie, type EntityTable } from 'dexie';
 import type { Listing, OwnPhoto } from './types.ts';
-import { uniquePhotos } from './shared/parse.ts';
+import { stripSiteName, uniquePhotos } from './shared/parse.ts';
 
 // Everything lives on the device (IndexedDB) first, so the app works offline.
 // When sync is on, every change is also queued in `outbox` and pushed to the
@@ -103,14 +103,15 @@ export async function findByUrl(url: string): Promise<Listing | undefined> {
   return all.find((l) => l.url && l.url.replace(/[?#].*$/, '').replace(/\/$/, '') === bare);
 }
 
-/** Removes repeated copies of the same ad photo from saved homes (older versions kept some). */
-export async function cleanDuplicatePhotos(d = db): Promise<number> {
+/** Tidies homes saved by older versions: repeated copies of ad photos, and titles ending in "— idealista". */
+export async function cleanSavedHomes(d = db): Promise<number> {
   const fixed: string[] = [];
   await d.transaction('rw', d.listings, d.outbox, async () => {
     for (const l of await d.listings.toArray()) {
       const unique = uniquePhotos(l.photoUrls);
-      if (unique.length < l.photoUrls.length) {
-        await d.listings.update(l.id, { photoUrls: unique, updatedAt: Date.now() });
+      const title = (l.source && stripSiteName(l.title, l.source)) || l.title;
+      if (unique.length < l.photoUrls.length || title !== l.title) {
+        await d.listings.update(l.id, { photoUrls: unique, title, updatedAt: Date.now() });
         fixed.push(l.id);
       }
     }

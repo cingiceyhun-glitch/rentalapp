@@ -182,7 +182,7 @@ export function findCoordinatesInScripts(html: string): [number, number] | undef
 }
 
 /** "T1 flat for rent in X — idealista" → "T1 flat for rent in X". */
-function stripSiteName(title: string | undefined, source: string): string | undefined {
+export function stripSiteName(title: string | undefined, source: string): string | undefined {
   if (!title) return title;
   const site = source.split('.')[0];
   if (!site) return title;
